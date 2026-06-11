@@ -78,9 +78,9 @@ resource "google_storage_bucket" "build_source" {
 }
 
 resource "google_storage_bucket_iam_member" "build_source_viewer" {
-  bucket  = google_storage_bucket.build_source.name
-  role    = "roles/storage.objectViewer"
-  member  = "serviceAccount:${data.google_project.current.number}-compute@developer.gserviceaccount.com"
+  bucket = google_storage_bucket.build_source.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${data.google_project.current.number}-compute@developer.gserviceaccount.com"
 }
 
 resource "google_cloud_run_v2_service" "app" {
@@ -100,6 +100,14 @@ resource "google_cloud_run_v2_service" "app" {
     service_account                  = google_service_account.runtime.email
     timeout                          = "300s"
     max_instance_request_concurrency = 80
+
+    dynamic "vpc_access" {
+      for_each = var.vpc_connector == "" ? [] : [var.vpc_connector]
+      content {
+        connector = vpc_access.value
+        egress    = var.vpc_egress
+      }
+    }
 
     scaling {
       max_instance_count = var.max_instance_count

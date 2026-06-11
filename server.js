@@ -11,11 +11,64 @@ const UPSTREAM_LLM_URL = process.env.UPSTREAM_LLM_URL || '';
 const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS || 60000);
 
 const HTML_BODY = fs.readFileSync(HTML_PATH);
+const PROVIDERS = {
+  anthropic: {
+    url: 'https://api.ai.public.rakuten-it.com/anthropic/v1/messages',
+    buildHeaders: (key) => ({
+      'Content-Type': 'application/json; charset=utf-8',
+      Authorization: key,
+      'anthropic-version': '2023-06-01'
+    }),
+    buildPayload: ({ model, system, user }) => ({
+      model,
+      max_tokens: 4000,
+      system,
+      messages: [{ role: 'user', content: user }]
+    }),
+    extractText: (data) => ((data.content && data.content[0] && data.content[0].text) || '')
+  },
+  gemini: {
+    url: ({ model }) =>
+      `https://api.ai.public.rakuten-it.com/google-vertexai/v1/publishers/google/models/${encodeURIComponent(model)}:generateContent`,
+    buildHeaders: (key) => ({
+      'Content-Type': 'application/json; charset=utf-8',
+      Authorization: key
+    }),
+    buildPayload: ({ system, user }) => ({
+      system_instruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+      generationConfig: { maxOutputTokens: 4000 }
+    }),
+    extractText: (data) => {
+      const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+      return parts.map((part) => part.text || '').join('');
+    }
+  },
+  rakuten: {
+    url: 'https://api.ai.public.rakuten-it.com/rakutenllms/v1/chat/completions',
+    buildHeaders: (key) => ({
+      'Content-Type': 'application/json; charset=utf-8',
+      Authorization: `Bearer ${key}`
+    }),
+    buildPayload: ({ model, system, user }) => ({
+      model,
+      stream: false,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user }
+      ]
+    }),
+    extractText: (data) => (((data.choices || [])[0] || {}).message || {}).content || ''
+  }
+};
 
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store'
+    'Cache-Control': 'no-store',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, anthropic-version'
   });
   res.end(JSON.stringify(payload));
 }
@@ -36,63 +89,149 @@ function getRawBody(req) {
   });
 }
 
-function proxyToUpstream(req, res, rawBody) {
-  if (!UPSTREAM_LLM_URL) {
-    sendJson(res, 500, {
-      error: 'UPSTREAM_LLM_URL is not configured on this Cloud Run service.'
+function sendNoContent(res) {
+  res.writeHead(204, {
+    'Cache-Control': 'no-store',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, anthropic-version'
+  });
+  res.end();
+}
+
+function requestUpstream(targetUrl, headers, rawBody) {
+  return new Promise((resolve, reject) => {
+    const upstreamUrl = new URL(targetUrl);
+    const transport = upstreamUrl.protocol === 'http:' ? http : https;
+    const upstreamReq = transport.request(
+      {
+        protocol: upstreamUrl.protocol,
+        hostname: upstreamUrl.hostname,
+        port: upstreamUrl.port || undefined,
+        path: `${upstreamUrl.pathname}${upstreamUrl.search}`,
+        method: 'POST',
+        headers,
+        timeout: REQUEST_TIMEOUT_MS
+      },
+      (upstreamRes) => {
+        const chunks = [];
+        upstreamRes.on('data', (chunk) => chunks.push(chunk));
+        upstreamRes.on('end', () => {
+          resolve({
+            statusCode: upstreamRes.statusCode || 502,
+            contentType: upstreamRes.headers['content-type'] || 'application/json; charset=utf-8',
+            body: Buffer.concat(chunks).toString('utf8')
+          });
+        });
+      }
+    );
+
+    upstreamReq.on('timeout', () => {
+      upstreamReq.destroy(new Error('Upstream request timed out'));
     });
-    return;
-  }
 
-  let upstreamUrl;
+    upstreamReq.on('error', reject);
+
+    upstreamReq.write(rawBody);
+    upstreamReq.end();
+  });
+}
+
+function parseJson(rawText) {
   try {
-    upstreamUrl = new URL(UPSTREAM_LLM_URL);
+    return rawText ? JSON.parse(rawText) : null;
   } catch (error) {
-    sendJson(res, 500, { error: 'UPSTREAM_LLM_URL is invalid.' });
-    return;
+    return null;
+  }
+}
+
+function normalizeProvider(provider) {
+  if (provider === 'rakutenai') return 'rakuten';
+  return provider;
+}
+
+async function proxyToUpstream(res, rawBody) {
+  if (!UPSTREAM_LLM_URL) {
+    return false;
   }
 
-  const transport = upstreamUrl.protocol === 'http:' ? http : https;
-  const upstreamReq = transport.request(
-    {
-      protocol: upstreamUrl.protocol,
-      hostname: upstreamUrl.hostname,
-      port: upstreamUrl.port || undefined,
-      path: `${upstreamUrl.pathname}${upstreamUrl.search}`,
-      method: 'POST',
-      headers: {
+  try {
+    const upstream = await requestUpstream(
+      UPSTREAM_LLM_URL,
+      {
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Length': Buffer.byteLength(rawBody)
       },
-      timeout: REQUEST_TIMEOUT_MS
-    },
-    (upstreamRes) => {
-      const chunks = [];
-      upstreamRes.on('data', (chunk) => chunks.push(chunk));
-      upstreamRes.on('end', () => {
-        const responseBody = Buffer.concat(chunks);
-        const contentType = upstreamRes.headers['content-type'] || 'application/json; charset=utf-8';
-        res.writeHead(upstreamRes.statusCode || 502, {
-          'Content-Type': contentType,
-          'Cache-Control': 'no-store'
-        });
-        res.end(responseBody);
-      });
-    }
-  );
-
-  upstreamReq.on('timeout', () => {
-    upstreamReq.destroy(new Error('Upstream request timed out'));
-  });
-
-  upstreamReq.on('error', (error) => {
-    sendJson(res, 502, {
-      error: `Failed to reach upstream LLM gateway: ${error.message}`
+      rawBody
+    );
+    res.writeHead(upstream.statusCode, {
+      'Content-Type': upstream.contentType,
+      'Cache-Control': 'no-store',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, anthropic-version'
     });
-  });
+    res.end(upstream.body);
+    return true;
+  } catch (error) {
+    sendJson(res, 502, {
+      error: `Failed to reach configured upstream gateway: ${error.message}`
+    });
+    return true;
+  }
+}
 
-  upstreamReq.write(rawBody);
-  upstreamReq.end();
+async function handleBuiltinGateway(res, rawBody) {
+  const payload = parseJson(rawBody) || {};
+  const provider = normalizeProvider(String(payload.provider || ''));
+  const providerConfig = PROVIDERS[provider];
+  const key = String(payload.key || payload.apiKey || '').trim();
+  const model = String(payload.model || '').trim();
+  const system = String(payload.system || '');
+  const user = String(payload.user || '');
+
+  if (!key) {
+    sendJson(res, 400, { error: 'Missing key' });
+    return;
+  }
+  if (!providerConfig) {
+    sendJson(res, 400, { error: `Unsupported provider: ${provider || 'unknown'}` });
+    return;
+  }
+  if (!model) {
+    sendJson(res, 400, { error: 'Missing model' });
+    return;
+  }
+
+  const targetUrl = typeof providerConfig.url === 'function' ? providerConfig.url({ model }) : providerConfig.url;
+  const requestBody = JSON.stringify(providerConfig.buildPayload({ model, system, user }));
+
+  try {
+    const upstream = await requestUpstream(
+      targetUrl,
+      {
+        ...providerConfig.buildHeaders(key),
+        'Content-Length': Buffer.byteLength(requestBody)
+      },
+      requestBody
+    );
+    const data = parseJson(upstream.body);
+    if (upstream.statusCode >= 200 && upstream.statusCode < 300 && data) {
+      sendJson(res, upstream.statusCode, {
+        text: providerConfig.extractText(data),
+        raw: data
+      });
+      return;
+    }
+
+    sendJson(res, upstream.statusCode, {
+      error: data || upstream.body
+    });
+  } catch (error) {
+    sendJson(res, 502, {
+      error: `Failed to reach built-in gateway upstream: ${error.message}`
+    });
+  }
 }
 
 const server = http.createServer(async (req, res) => {
@@ -103,7 +242,16 @@ const server = http.createServer(async (req, res) => {
 
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
-  if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
+  if (req.method === 'OPTIONS' && url.pathname === '/api/llm') {
+    sendNoContent(res);
+    return;
+  }
+
+  if (req.method === 'GET' && (
+    url.pathname === '/' ||
+    url.pathname === '/index.html' ||
+    url.pathname === '/media-planner-rakuten-gateway.html'
+  )) {
     res.writeHead(200, {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store'
@@ -115,6 +263,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/healthz') {
     sendJson(res, 200, {
       ok: true,
+      proxyMode: UPSTREAM_LLM_URL ? 'upstream' : 'builtin',
       upstreamConfigured: Boolean(UPSTREAM_LLM_URL)
     });
     return;
@@ -123,7 +272,10 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/llm') {
     try {
       const rawBody = await getRawBody(req);
-      proxyToUpstream(req, res, rawBody);
+      const proxied = await proxyToUpstream(res, rawBody);
+      if (!proxied) {
+        await handleBuiltinGateway(res, rawBody);
+      }
     } catch (error) {
       const statusCode = error.message === 'Request body too large' ? 413 : 400;
       sendJson(res, statusCode, { error: error.message });

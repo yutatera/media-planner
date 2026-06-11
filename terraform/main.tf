@@ -78,7 +78,6 @@ resource "google_storage_bucket" "build_source" {
 }
 
 resource "google_storage_bucket_iam_member" "build_source_viewer" {
-  project = var.project_id
   bucket  = google_storage_bucket.build_source.name
   role    = "roles/storage.objectViewer"
   member  = "serviceAccount:${data.google_project.current.number}-compute@developer.gserviceaccount.com"
@@ -95,13 +94,16 @@ resource "google_cloud_run_v2_service" "app" {
 
   scaling {
     min_instance_count = var.min_instance_count
-    max_instance_count = var.max_instance_count
   }
 
   template {
     service_account                  = google_service_account.runtime.email
     timeout                          = "300s"
     max_instance_request_concurrency = 80
+
+    scaling {
+      max_instance_count = var.max_instance_count
+    }
 
     containers {
       image = var.container_image

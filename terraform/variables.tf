@@ -1,7 +1,7 @@
 variable "project_id" {
   description = "GCP project ID."
   type        = string
-  default     = "sub-gcp-c-p-mkd-tech-sbx"
+  default     = "gmd-tech"
 }
 
 variable "region" {
@@ -31,13 +31,30 @@ variable "allowed_users" {
 variable "container_image" {
   description = "Container image deployed to Cloud Run."
   type        = string
-  default     = "asia-northeast1-docker.pkg.dev/sub-gcp-c-p-mkd-tech-sbx/media-planner-rakuten-gateway/media-planner-rakuten-gateway:latest"
+  default     = "asia-northeast1-docker.pkg.dev/gmd-tech/media-planner-rakuten-gateway/media-planner-rakuten-gateway:latest"
 }
 
 variable "upstream_llm_url" {
   description = "Optional override endpoint for /api/llm. Leave empty to use the built-in Node proxy logic."
   type        = string
   default     = ""
+}
+
+variable "vpc_connector" {
+  description = "Existing Serverless VPC Access connector name or fully qualified resource ID. Leave empty to disable VPC egress."
+  type        = string
+  default     = "projects/gmd-tech/locations/asia-northeast1/connectors/gmd-vpc-conn-stg"
+}
+
+variable "vpc_egress" {
+  description = "Cloud Run VPC egress setting when vpc_connector is set."
+  type        = string
+  default     = "ALL_TRAFFIC"
+
+  validation {
+    condition     = contains(["ALL_TRAFFIC", "PRIVATE_RANGES_ONLY"], var.vpc_egress)
+    error_message = "vpc_egress must be ALL_TRAFFIC or PRIVATE_RANGES_ONLY."
+  }
 }
 
 variable "max_instance_count" {

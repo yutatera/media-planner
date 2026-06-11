@@ -1,6 +1,6 @@
 {
   "name": "media-planner-rakuten-gateway",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Cloud Run wrapper for media-planner-rakuten-gateway.html",
   "scripts": {

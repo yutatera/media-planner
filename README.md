@@ -2,7 +2,7 @@
 
 `media-planner-rakuten-gateway.html` を Cloud Run で配信し、IAP で `rakuten.com` ドメインの Google アカウントだけが閲覧できるようにした構成です。
 
-このブランチでは、配置先を `sub-gcp-c-p-mkd-tech-sbx` から `gmd-tech` へ移す前提で Terraform を更新しています。
+現在は `gmd-tech` 上で運用し、利用状況トラッキング機能を含む `v1.1.0` を前提にしています。
 
 ## Architecture
 
@@ -44,14 +44,16 @@
 `server.js` は次を提供します。
 
 - `GET /` で HTML を返す
+- `GET /usage` で利用状況ダッシュボードを返す
 - `GET /healthz` で簡易ヘルスチェックを返す
 - `POST /api/llm` で Rakuten Gateway の各 API へ直接プロキシする
+- `GET /api/usage/summary` で利用状況集計を返す
 
 `proxy.rb` にあった provider 別の変換ロジックは `server.js` に統合済みです。通常運用では追加の upstream proxy は不要です。
 
 ## Usage Tracking Design
 
-2026-06-11 時点で、Cloud SQL インスタンス `gmd-tech-shared` に専用データベース `media_planner_rakuten_gateway` を新規作成しました。
+2026-06-11 時点で、Cloud SQL インスタンス `gmd-tech-shared` に専用データベース `media_planner_rakuten_gateway` を作成し、Cloud Run 起動時に Prisma migration を自動適用する構成にしています。
 
 この機能では、IAP が Cloud Run に渡す Google ユーザーヘッダーを使って利用状況を保存します。
 
@@ -80,6 +82,10 @@
 
 `DATABASE_URL` が未設定の環境では、既存アプリはそのまま動作し、利用状況保存だけが無効になります。これによりローカル開発や段階導入でも既存フローを壊しません。
 
+運用中の初回 migration:
+
+- `20260611202000_init_usage_events`
+
 ## Usage Screen
 
 `/usage` は既存の [media-planner-rakuten-gateway.html](/Users/takemasa.yamada/Documents/GitHub/media-planner/media-planner-rakuten-gateway.html) と同じカラースキームを継承したダッシュボードです。
@@ -97,11 +103,12 @@
 - `GET /usage`
 - `GET /api/usage/summary?days=7`
 
-導入時にまだ必要なもの:
+反映済みの構成:
 
-- Terraform apply による Cloud Run への Secret 注入
-- `media_planner_gateway_user` への DB 権限付与
-- Prisma Client 生成とテーブル作成
+- Secret Manager から `DATABASE_URL` を Cloud Run に注入
+- Cloud Run ランタイム SA に `roles/cloudsql.client` を付与
+- Cloud Run 起動時に `prisma migrate deploy` を実行
+- `usage_events` テーブルを Prisma migration で管理
 
 `UPSTREAM_LLM_URL` は必要な場合だけ使うオプションです。この環境変数を入れると、`/api/llm` のリクエストをその URL に丸ごと転送します。
 
@@ -115,6 +122,8 @@ terraform -chdir=terraform apply \
 ## Terraform
 
 Terraform は `1.6+` を前提にしています。ローカルの `Terraform 1.5.7` では `hashicorp/google v6.50.0` の provider schema 読み込みで失敗したため、このリポジトリでは新しめの Terraform を前提にします。
+
+この環境では一時バイナリ `/private/tmp/terraform-1.15.6/terraform` を使って apply しています。
 
 初期化:
 
@@ -142,6 +151,9 @@ terraform -chdir=terraform apply
 - `allowed_domain`: 既定値 `rakuten.com`
 - `allowed_users`: 明示的に通したいユーザー
 - `container_image`: `gmd-tech` の Artifact Registry に push したイメージ
+- `cloudsql_instance_connection_name`: 既定値 `gmd-tech:asia-northeast1:gmd-tech-shared`
+- `database_url_secret_name`: 既定値 `media-planner-rakuten-gateway-database-url`
+- `database_url_secret_version`: 既定値 `latest`
 - `vpc_connector`: 既定値 `projects/gmd-tech/locations/asia-northeast1/connectors/gmd-vpc-conn-stg`
 - `vpc_egress`: 既定値 `ALL_TRAFFIC`
 - `upstream_llm_url`: 必要な場合だけ使う `/api/llm` の転送先
@@ -179,10 +191,19 @@ terraform -chdir=terraform apply \
 1. `terraform.tfvars` で `project_id`, `container_image`, `allowed_users` を確認する
 2. Terraform で専用リソースを作成する
 3. Cloud Build で `gmd-tech` の Artifact Registry にイメージを push する
-4. Cloud Run を `gmd-vpc-conn-stg` + `ALL_TRAFFIC` で起動する
-5. IAP ログインと `/healthz`、`/api/llm` を確認する
+4. Cloud Run を `gmd-vpc-conn-stg` + `ALL_TRAFFIC` + Cloud SQL mount で起動する
+5. IAP ログインと `/usage`、`/api/llm` を確認する
 
 もし既存リソースを取り込む場合は、まず `terraform plan` で差分を確認してから import を行ってください。
+
+## Local Development
+
+社内CAが必要なため、`npm` や `prisma` 実行時は次の PEM を使う想定です。
+
+```bash
+NODE_EXTRA_CA_CERTS=/Users/takemasa.yamada/certs/rakuten_CA_only.pem npm install
+NODE_EXTRA_CA_CERTS=/Users/takemasa.yamada/certs/rakuten_CA_only.pem npx prisma generate
+```
 
 ## Security Notes
 

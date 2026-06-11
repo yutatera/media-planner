@@ -35,7 +35,7 @@ variable "container_image" {
 }
 
 variable "upstream_llm_url" {
-  description = "Optional upstream endpoint used by /api/llm."
+  description = "Optional override endpoint for /api/llm. Leave empty to use the built-in Node proxy logic."
   type        = string
   default     = ""
 }

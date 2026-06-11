@@ -17,3 +17,11 @@ output "artifact_registry_repository" {
 output "build_source_bucket" {
   value = google_storage_bucket.build_source.name
 }
+
+output "database_url_secret_name" {
+  value = var.database_url_secret_name
+}
+
+output "cloudsql_instance_connection_name" {
+  value = var.cloudsql_instance_connection_name
+}

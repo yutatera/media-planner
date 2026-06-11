@@ -30,9 +30,21 @@ resource "google_project_service" "iap" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "secretmanager" {
+  project            = var.project_id
+  service            = "secretmanager.googleapis.com"
+  disable_on_destroy = false
+}
+
 resource "google_project_service" "run" {
   project            = var.project_id
   service            = "run.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "sqladmin" {
+  project            = var.project_id
+  service            = "sqladmin.googleapis.com"
   disable_on_destroy = false
 }
 
@@ -83,6 +95,21 @@ resource "google_storage_bucket_iam_member" "build_source_viewer" {
   member = "serviceAccount:${data.google_project.current.number}-compute@developer.gserviceaccount.com"
 }
 
+resource "google_project_iam_member" "runtime_cloudsql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.runtime.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "runtime_database_url_accessor" {
+  project   = var.project_id
+  secret_id = var.database_url_secret_name
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.runtime.email}"
+
+  depends_on = [google_project_service.secretmanager]
+}
+
 resource "google_cloud_run_v2_service" "app" {
   provider            = google-beta
   project             = var.project_id
@@ -113,6 +140,17 @@ resource "google_cloud_run_v2_service" "app" {
       max_instance_count = var.max_instance_count
     }
 
+    dynamic "volumes" {
+      for_each = var.cloudsql_instance_connection_name == "" ? [] : [var.cloudsql_instance_connection_name]
+      content {
+        name = "cloudsql"
+
+        cloud_sql_instance {
+          instances = [volumes.value]
+        }
+      }
+    }
+
     containers {
       image = var.container_image
 
@@ -135,6 +173,28 @@ resource "google_cloud_run_v2_service" "app" {
         }
       }
 
+      dynamic "env" {
+        for_each = var.database_url_secret_name == "" ? [] : [1]
+        content {
+          name = "DATABASE_URL"
+
+          value_source {
+            secret_key_ref {
+              secret  = var.database_url_secret_name
+              version = var.database_url_secret_version
+            }
+          }
+        }
+      }
+
+      dynamic "volume_mounts" {
+        for_each = var.cloudsql_instance_connection_name == "" ? [] : [1]
+        content {
+          name       = "cloudsql"
+          mount_path = "/cloudsql"
+        }
+      }
+
       startup_probe {
         failure_threshold = 1
         period_seconds    = 240
@@ -150,7 +210,11 @@ resource "google_cloud_run_v2_service" "app" {
   depends_on = [
     google_project_service.run,
     google_project_service.iap,
+    google_project_service.secretmanager,
+    google_project_service.sqladmin,
     google_project_service_identity.iap,
+    google_project_iam_member.runtime_cloudsql_client,
+    google_secret_manager_secret_iam_member.runtime_database_url_accessor,
   ]
 }
 

@@ -40,6 +40,24 @@ variable "upstream_llm_url" {
   default     = ""
 }
 
+variable "cloudsql_instance_connection_name" {
+  description = "Cloud SQL instance connection name mounted into Cloud Run for Prisma."
+  type        = string
+  default     = "gmd-tech:asia-northeast1:gmd-tech-shared"
+}
+
+variable "database_url_secret_name" {
+  description = "Secret Manager secret name that stores DATABASE_URL."
+  type        = string
+  default     = "media-planner-rakuten-gateway-database-url"
+}
+
+variable "database_url_secret_version" {
+  description = "Secret Manager secret version for DATABASE_URL."
+  type        = string
+  default     = "latest"
+}
+
 variable "vpc_connector" {
   description = "Existing Serverless VPC Access connector name or fully qualified resource ID. Leave empty to disable VPC egress."
   type        = string

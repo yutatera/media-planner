@@ -4,7 +4,16 @@
   "private": true,
   "description": "Cloud Run wrapper for media-planner-rakuten-gateway.html",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.9.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.9.0"
   },
   "engines": {
     "node": ">=20"

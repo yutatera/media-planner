@@ -2,18 +2,31 @@ const fs = require('fs');
 const http = require('http');
 const https = require('https');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const { URL } = require('url');
+
+let PrismaClient = null;
+try {
+  ({ PrismaClient } = require('@prisma/client'));
+} catch (error) {
+  PrismaClient = null;
+}
 
 const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
 const HTML_PATH = path.join(__dirname, 'media-planner-rakuten-gateway.html');
+const USAGE_HTML_PATH = path.join(__dirname, 'usage.html');
 const UPSTREAM_LLM_URL = process.env.UPSTREAM_LLM_URL || '';
 const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS || 180000);
 const EGRESS_IP_CHECK_URL = process.env.EGRESS_IP_CHECK_URL || 'https://api.ipify.org?format=json';
 const EGRESS_IP_CHECK_TIMEOUT_MS = Number(process.env.EGRESS_IP_CHECK_TIMEOUT_MS || 10000);
 const DEBUG_PROBE_TIMEOUT_MS = Number(process.env.DEBUG_PROBE_TIMEOUT_MS || 10000);
+const DATABASE_URL = process.env.DATABASE_URL || '';
 
 const HTML_BODY = fs.readFileSync(HTML_PATH);
+const USAGE_HTML_BODY = fs.readFileSync(USAGE_HTML_PATH);
+const prisma = PrismaClient && DATABASE_URL ? new PrismaClient() : null;
+
 const PROVIDERS = {
   anthropic: {
     url: 'https://api.ai.public.rakuten-it.com/anthropic/v1/messages',
@@ -109,6 +122,14 @@ function sendJson(res, statusCode, payload) {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, anthropic-version'
   });
   res.end(JSON.stringify(payload));
+}
+
+function sendHtml(res, statusCode, body) {
+  res.writeHead(statusCode, {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'no-store'
+  });
+  res.end(body);
 }
 
 function getRawBody(req) {
@@ -341,6 +362,355 @@ function normalizeProvider(provider) {
   return provider;
 }
 
+function getUsageTrackingStatus() {
+  if (prisma) {
+    return {
+      enabled: true,
+      dependencyAvailable: true,
+      databaseConfigured: true,
+      reason: 'ready'
+    };
+  }
+
+  if (!DATABASE_URL) {
+    return {
+      enabled: false,
+      dependencyAvailable: Boolean(PrismaClient),
+      databaseConfigured: false,
+      reason: 'missing_database_url'
+    };
+  }
+
+  return {
+    enabled: false,
+    dependencyAvailable: false,
+    databaseConfigured: true,
+    reason: 'missing_prisma_client'
+  };
+}
+
+function isMissingUsageTableError(error) {
+  if (!error) return false;
+  if (error.code === 'P2021') return true;
+  return typeof error.message === 'string' && error.message.includes('usage_events');
+}
+
+function getPrismaCliPath() {
+  return path.join(__dirname, 'node_modules', '.bin', process.platform === 'win32' ? 'prisma.cmd' : 'prisma');
+}
+
+function runStartupMigrations() {
+  if (!DATABASE_URL || !prisma) {
+    return;
+  }
+
+  const prismaCliPath = getPrismaCliPath();
+  if (!fs.existsSync(prismaCliPath)) {
+    logEvent('startup_migration_skipped', {
+      reason: 'missing_prisma_cli'
+    });
+    return;
+  }
+
+  logEvent('startup_migration_begin', {
+    command: 'prisma migrate deploy'
+  });
+
+  try {
+    const output = execFileSync(prismaCliPath, ['migrate', 'deploy'], {
+      cwd: __dirname,
+      env: process.env,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    logEvent('startup_migration_success', {
+      output: output.trim().slice(0, 4000)
+    });
+  } catch (error) {
+    const stdout = error.stdout ? String(error.stdout) : '';
+    const stderr = error.stderr ? String(error.stderr) : '';
+    logEvent('startup_migration_failure', {
+      error: error.message,
+      stdout: stdout.trim().slice(0, 4000),
+      stderr: stderr.trim().slice(0, 4000)
+    });
+    throw error;
+  }
+}
+
+function getIapUserEmail(req) {
+  const headerCandidates = [
+    req.headers['x-goog-authenticated-user-email'],
+    req.headers['x-forwarded-email'],
+    req.headers['x-goog-authenticated-user-id']
+  ];
+
+  for (const candidate of headerCandidates) {
+    if (typeof candidate !== 'string') continue;
+    const trimmed = candidate.trim();
+    if (!trimmed) continue;
+    const normalized = trimmed.includes(':') ? trimmed.slice(trimmed.indexOf(':') + 1) : trimmed;
+    if (normalized.includes('@')) {
+      return normalized.toLowerCase();
+    }
+  }
+
+  return null;
+}
+
+function getTraceId(req) {
+  const raw = String(req.headers['x-cloud-trace-context'] || '').trim();
+  if (!raw) return null;
+  const traceId = raw.split('/')[0].trim();
+  return traceId || null;
+}
+
+function getPagePath(req, payload = null) {
+  if (payload && typeof payload.pagePath === 'string' && payload.pagePath.startsWith('/')) {
+    return payload.pagePath;
+  }
+
+  const referer = String(req.headers.referer || '');
+  if (referer) {
+    try {
+      const refererUrl = new URL(referer);
+      return refererUrl.pathname || '/';
+    } catch (error) {
+      return '/';
+    }
+  }
+
+  return '/';
+}
+
+async function recordUsageEvent(eventData) {
+  if (!prisma) {
+    return;
+  }
+
+  try {
+    await prisma.usageEvent.create({
+      data: {
+        occurredAt: eventData.occurredAt || new Date(),
+        userEmail: eventData.userEmail || null,
+        pagePath: eventData.pagePath || '/',
+        eventType: eventData.eventType,
+        provider: eventData.provider || null,
+        model: eventData.model || null,
+        success: typeof eventData.success === 'boolean' ? eventData.success : null,
+        statusCode: Number.isInteger(eventData.statusCode) ? eventData.statusCode : null,
+        durationMs: Number.isInteger(eventData.durationMs) ? eventData.durationMs : null,
+        requestBytes: Number.isInteger(eventData.requestBytes) ? eventData.requestBytes : null,
+        responseBytes: Number.isInteger(eventData.responseBytes) ? eventData.responseBytes : null,
+        systemLength: Number.isInteger(eventData.systemLength) ? eventData.systemLength : null,
+        userLength: Number.isInteger(eventData.userLength) ? eventData.userLength : null,
+        errorMessage: eventData.errorMessage || null,
+        traceId: eventData.traceId || null,
+        metadata: eventData.metadata || undefined
+      }
+    });
+  } catch (error) {
+    logEvent('usage_record_error', {
+      error: error.message,
+      eventType: eventData.eventType,
+      pagePath: eventData.pagePath || '/',
+      userEmail: eventData.userEmail || null
+    });
+  }
+}
+
+function recordPageView(req, pagePath) {
+  return recordUsageEvent({
+    eventType: 'PAGE_VIEW',
+    pagePath,
+    userEmail: getIapUserEmail(req),
+    traceId: getTraceId(req),
+    metadata: {
+      method: req.method || 'GET'
+    }
+  });
+}
+
+function clampUsageDays(rawValue) {
+  const value = Number.parseInt(String(rawValue || '7'), 10);
+  if (!Number.isFinite(value)) return 7;
+  return Math.min(90, Math.max(1, value));
+}
+
+async function buildUsageSummary(days) {
+  const status = getUsageTrackingStatus();
+  if (!prisma) {
+    return {
+      usageTracking: status,
+      summary: {
+        totalEvents: 0,
+        llmCalls: 0,
+        successRate: 0,
+        activeUsers: 0
+      },
+      topUsers: [],
+      modelUsage: [],
+      recentEvents: []
+    };
+  }
+
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const baseWhere = {
+    occurredAt: { gte: since }
+  };
+
+  let totalEvents;
+  let llmCalls;
+  let llmSuccessCount;
+  let userGroups;
+  let modelGroups;
+  let recentEvents;
+
+  try {
+    [
+      totalEvents,
+      llmCalls,
+      llmSuccessCount,
+      userGroups,
+      modelGroups,
+      recentEvents
+    ] = await Promise.all([
+      prisma.usageEvent.count({ where: baseWhere }),
+      prisma.usageEvent.count({
+        where: {
+          ...baseWhere,
+          eventType: 'LLM_REQUEST'
+        }
+      }),
+      prisma.usageEvent.count({
+        where: {
+          ...baseWhere,
+          eventType: 'LLM_REQUEST',
+          success: true
+        }
+      }),
+      prisma.usageEvent.groupBy({
+        by: ['userEmail', 'eventType'],
+        where: {
+          ...baseWhere,
+          userEmail: {
+            not: null
+          }
+        },
+        _count: {
+          _all: true
+        }
+      }),
+      prisma.usageEvent.groupBy({
+        by: ['provider', 'model', 'success'],
+        where: {
+          ...baseWhere,
+          eventType: 'LLM_REQUEST'
+        },
+        _count: {
+          _all: true
+        }
+      }),
+      prisma.usageEvent.findMany({
+        where: baseWhere,
+        orderBy: {
+          occurredAt: 'desc'
+        },
+        take: 30,
+        select: {
+          occurredAt: true,
+          userEmail: true,
+          pagePath: true,
+          eventType: true,
+          provider: true,
+          model: true,
+          success: true,
+          statusCode: true,
+          durationMs: true,
+          errorMessage: true
+        }
+      })
+    ]);
+  } catch (error) {
+    if (isMissingUsageTableError(error)) {
+      return {
+        usageTracking: {
+          ...status,
+          enabled: false,
+          reason: 'missing_usage_table'
+        },
+        summary: {
+          totalEvents: 0,
+          llmCalls: 0,
+          successRate: 0,
+          activeUsers: 0
+        },
+        topUsers: [],
+        modelUsage: [],
+        recentEvents: []
+      };
+    }
+
+    throw error;
+  }
+
+  const userMap = new Map();
+  for (const row of userGroups) {
+    if (!row.userEmail) continue;
+    const existing = userMap.get(row.userEmail) || {
+      userEmail: row.userEmail,
+      totalEvents: 0,
+      pageViews: 0,
+      llmCalls: 0
+    };
+    existing.totalEvents += row._count._all;
+    if (row.eventType === 'PAGE_VIEW') {
+      existing.pageViews += row._count._all;
+    }
+    if (row.eventType === 'LLM_REQUEST') {
+      existing.llmCalls += row._count._all;
+    }
+    userMap.set(row.userEmail, existing);
+  }
+
+  const topUsers = Array.from(userMap.values())
+    .sort((left, right) => right.totalEvents - left.totalEvents)
+    .slice(0, 8);
+
+  const modelMap = new Map();
+  for (const row of modelGroups) {
+    const key = `${row.provider || ''}::${row.model || ''}`;
+    const existing = modelMap.get(key) || {
+      provider: row.provider || null,
+      model: row.model || null,
+      count: 0,
+      successCount: 0,
+      failureCount: 0
+    };
+    existing.count += row._count._all;
+    if (row.success === true) existing.successCount += row._count._all;
+    if (row.success === false) existing.failureCount += row._count._all;
+    modelMap.set(key, existing);
+  }
+
+  const modelUsage = Array.from(modelMap.values())
+    .sort((left, right) => right.count - left.count)
+    .slice(0, 8);
+
+  return {
+    usageTracking: status,
+    summary: {
+      totalEvents,
+      llmCalls,
+      successRate: llmCalls > 0 ? (llmSuccessCount / llmCalls) * 100 : 0,
+      activeUsers: userMap.size
+    },
+    topUsers,
+    modelUsage,
+    recentEvents
+  };
+}
+
 async function proxyToUpstream(res, rawBody) {
   if (!UPSTREAM_LLM_URL) {
     return false;
@@ -378,7 +748,7 @@ async function proxyToUpstream(res, rawBody) {
   }
 }
 
-async function handleBuiltinGateway(res, rawBody) {
+async function handleBuiltinGateway(req, res, rawBody) {
   const payload = parseJson(rawBody) || {};
   const provider = normalizeProvider(String(payload.provider || ''));
   const providerConfig = PROVIDERS[provider];
@@ -386,6 +756,10 @@ async function handleBuiltinGateway(res, rawBody) {
   const model = String(payload.model || '').trim();
   const system = String(payload.system || '');
   const user = String(payload.user || '');
+  const requestStartedAt = Date.now();
+  const userEmail = getIapUserEmail(req);
+  const pagePath = getPagePath(req, payload);
+  const traceId = getTraceId(req);
 
   if (!key) {
     sendJson(res, 400, { error: 'Missing key' });
@@ -408,7 +782,9 @@ async function handleBuiltinGateway(res, rawBody) {
     model,
     systemLength: system.length,
     userLength: user.length,
-    upstreamBodyBytes: Buffer.byteLength(requestBody)
+    upstreamBodyBytes: Buffer.byteLength(requestBody),
+    userEmail,
+    pagePath
   };
 
   logEvent('builtin_gateway_request', requestMeta);
@@ -424,6 +800,27 @@ async function handleBuiltinGateway(res, rawBody) {
       requestMeta
     );
     const data = parseJson(upstream.body);
+    const durationMs = Date.now() - requestStartedAt;
+    const success = upstream.statusCode >= 200 && upstream.statusCode < 300 && Boolean(data);
+
+    await recordUsageEvent({
+      occurredAt: new Date(requestStartedAt),
+      eventType: 'LLM_REQUEST',
+      userEmail,
+      pagePath,
+      provider,
+      model,
+      success,
+      statusCode: upstream.statusCode,
+      durationMs,
+      requestBytes: Buffer.byteLength(requestBody),
+      responseBytes: Buffer.byteLength(upstream.body || '', 'utf8'),
+      systemLength: system.length,
+      userLength: user.length,
+      errorMessage: success ? null : typeof upstream.body === 'string' ? upstream.body.slice(0, 1000) : null,
+      traceId
+    });
+
     if (upstream.statusCode >= 200 && upstream.statusCode < 300 && data) {
       sendJson(res, upstream.statusCode, {
         text: providerConfig.extractText(data),
@@ -439,6 +836,22 @@ async function handleBuiltinGateway(res, rawBody) {
     logEvent('builtin_gateway_failure', {
       ...requestMeta,
       error: error.message
+    });
+    await recordUsageEvent({
+      occurredAt: new Date(requestStartedAt),
+      eventType: 'LLM_REQUEST',
+      userEmail,
+      pagePath,
+      provider,
+      model,
+      success: false,
+      statusCode: 502,
+      durationMs: Date.now() - requestStartedAt,
+      requestBytes: Buffer.byteLength(requestBody),
+      systemLength: system.length,
+      userLength: user.length,
+      errorMessage: error.message,
+      traceId
     });
     sendJson(res, 502, {
       error: `Failed to reach built-in gateway upstream: ${error.message}`
@@ -519,11 +932,14 @@ const server = http.createServer(async (req, res) => {
     url.pathname === '/index.html' ||
     url.pathname === '/media-planner-rakuten-gateway.html'
   )) {
-    res.writeHead(200, {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-store'
-    });
-    res.end(HTML_BODY);
+    sendHtml(res, 200, HTML_BODY);
+    void recordPageView(req, '/');
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/usage') {
+    sendHtml(res, 200, USAGE_HTML_BODY);
+    void recordPageView(req, '/usage');
     return;
   }
 
@@ -585,7 +1001,7 @@ const server = http.createServer(async (req, res) => {
       const rawBody = await getRawBody(req);
       const proxied = await proxyToUpstream(res, rawBody);
       if (!proxied) {
-        await handleBuiltinGateway(res, rawBody);
+        await handleBuiltinGateway(req, res, rawBody);
       }
     } catch (error) {
       const statusCode = error.message === 'Request body too large' ? 413 : 400;
@@ -594,11 +1010,39 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && url.pathname === '/api/usage/summary') {
+    try {
+      const days = clampUsageDays(url.searchParams.get('days'));
+      const summary = await buildUsageSummary(days);
+      sendJson(res, 200, {
+        currentUser: getIapUserEmail(req),
+        range: {
+          days
+        },
+        ...summary
+      });
+    } catch (error) {
+      sendJson(res, 500, {
+        error: `Failed to load usage summary: ${error.message}`,
+        usageTracking: getUsageTrackingStatus()
+      });
+    }
+    return;
+  }
+
   sendJson(res, 404, { error: 'Not found' });
 });
 
+try {
+  runStartupMigrations();
+} catch (error) {
+  console.error(`Startup migration failed: ${error.message}`);
+  process.exit(1);
+}
+
 server.listen(PORT, HOST, () => {
   console.log(`Server listening on http://${HOST}:${PORT}`);
+  logEvent('usage_tracking_status', getUsageTrackingStatus());
   void checkEgressIp('startup').catch((error) => {
     logEvent('egress_ip_check_failure', {
       source: 'startup',

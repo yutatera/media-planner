@@ -1,0 +1,3437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>メディアプランニング AI v5.12</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0c;
+  --surface: #131316;
+  --surface2: #1c1c21;
+  --border: #26262d;
+  --accent: #00e5ff;
+  --accent2: #7b61ff;
+  --accent3: #39ff6e;
+  --warn: #ffb800;
+  --text: #e8e8f0;
+  --muted: #777;
+  --dim: #444;
+  --danger: #ff4d4d;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-weight: 300; min-height: 100vh; line-height: 1.7; }
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background: radial-gradient(ellipse 60% 40% at 80% 10%, rgba(0,229,255,0.04) 0%, transparent 60%),
+              radial-gradient(ellipse 50% 30% at 10% 80%, rgba(123,97,255,0.04) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+.wrap { max-width: 900px; margin: 0 auto; padding: 48px 24px; position: relative; z-index: 1; }
+
+/* Header */
+.hdr { margin-bottom: 48px; }
+.hdr-eyebrow { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+.hdr-eyebrow::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--accent), transparent); max-width: 120px; }
+h1 { font-size: clamp(26px, 4.5vw, 40px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+h1 em { font-style: normal; color: var(--accent); }
+.hdr-sub { margin-top: 10px; font-size: 13px; color: var(--muted); }
+.v-badge { display: inline-block; font-family: 'DM Mono', monospace; font-size: 10px; background: rgba(0,229,255,0.1); color: var(--accent); border: 1px solid rgba(0,229,255,0.2); padding: 2px 8px; border-radius: 4px; margin-left: 10px; vertical-align: middle; }
+
+/* Card */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 32px; margin-bottom: 20px; }
+.card-title { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+.card-title .num { background: rgba(0,229,255,0.12); border: 1px solid rgba(0,229,255,0.2); border-radius: 4px; padding: 1px 7px; font-size: 11px; }
+
+/* AI Selector */
+.ai-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.ai-btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 15px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); cursor: pointer; font-size: 13px; font-family: 'Noto Sans JP', sans-serif; font-weight: 400; transition: all 0.18s; white-space: nowrap; }
+.ai-btn:hover { border-color: var(--muted); color: var(--text); }
+.ai-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.06); }
+.ai-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.8; flex-shrink: 0; }
+.free-tag { font-family: 'DM Mono', monospace; font-size: 9px; background: rgba(57,255,110,0.1); color: var(--accent3); border: 1px solid rgba(57,255,110,0.2); padding: 1px 5px; border-radius: 3px; margin-left: 3px; }
+.key-area { display: none; } .key-area.active { display: block; }
+.key-row { display: flex; gap: 10px; align-items: center; }
+.key-row input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; padding: 9px 13px; outline: none; transition: border-color 0.18s; }
+.key-row input:focus { border-color: var(--accent); }
+.btn-sm { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 9px 15px; border-radius: 7px; font-size: 13px; font-family: 'Noto Sans JP', sans-serif; cursor: pointer; white-space: nowrap; transition: all 0.18s; }
+.btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+.key-st { font-family: 'DM Mono', monospace; font-size: 11px; margin-top: 7px; }
+.key-st.ok { color: var(--accent3); }
+.key-hint { font-size: 12px; color: var(--dim); margin-top: 7px; }
+
+/* Output mode row */
+.mode-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.mode-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+.mode-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 13px; padding: 8px 12px; outline: none; cursor: pointer; transition: border-color 0.18s; }
+.mode-select:focus { border-color: var(--accent); }
+.mode-select option { background: var(--surface2); }
+.json-toggle-wrap { display: flex; align-items: center; gap: 8px; }
+.toggle-switch { position: relative; width: 36px; height: 20px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; cursor: pointer; transition: all 0.2s; }
+.toggle-slider::before { content: ''; position: absolute; width: 12px; height: 12px; left: 3px; top: 3px; background: var(--dim); border-radius: 50%; transition: all 0.2s; }
+.toggle-switch input:checked + .toggle-slider { background: rgba(57,255,110,0.15); border-color: var(--accent3); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(16px); background: var(--accent3); }
+.toggle-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.08em; }
+.mode-desc { font-size: 11px; color: var(--dim); margin-left: auto; }
+
+/* Form fields */
+.fg { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.fg.c1 { grid-template-columns: 1fr; }
+.fg.c3 { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 600px) { .fg, .fg.c3 { grid-template-columns: 1fr; } }
+.f { display: flex; flex-direction: column; gap: 5px; }
+label { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+label .req { color: var(--danger); margin-left: 3px; }
+label .opt { color: var(--dim); font-size: 10px; margin-left: 4px; }
+input[type="text"], input[type="number"], select, textarea { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 13px; font-weight: 300; padding: 9px 13px; transition: border-color 0.18s, box-shadow 0.18s; outline: none; width: 100%; }
+input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,229,255,0.06); }
+select option { background: var(--surface2); }
+textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
+.sec-hd { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent2); letter-spacing: 0.12em; text-transform: uppercase; margin: 24px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.field-hint { font-size: 11px; color: var(--dim); margin-top: 4px; }
+
+/* Media rows */
+/* Age checkboxes */
+.age-checks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.age-chk { display: flex; align-items: center; gap: 5px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 12px; color: var(--muted); transition: all 0.15s; user-select: none; }
+.age-chk:hover { border-color: var(--accent2); color: var(--text); }
+.age-chk input { display: none; }
+.age-chk.checked { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.06); }
+
+.media-row { display: grid; grid-template-columns: 130px 90px 90px 80px 80px 80px 36px; gap: 8px; align-items: end; margin-bottom: 8px; }
+@media (max-width: 700px) { .media-row { grid-template-columns: 1fr 1fr; } }
+.constraint-row { display: grid; grid-template-columns: 160px 80px 80px 36px; gap: 8px; align-items: end; margin-bottom: 8px; }
+@media (max-width: 600px) { .constraint-row { grid-template-columns: 1fr 1fr; } }
+.add-row-btn { display: flex; align-items: center; gap: 6px; background: transparent; border: 1px dashed var(--border); border-radius: 7px; color: var(--muted); padding: 8px 14px; font-size: 12px; cursor: pointer; transition: all 0.18s; margin-top: 4px; }
+.add-row-btn:hover { border-color: var(--accent); color: var(--accent); }
+.del-btn { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--dim); width: 32px; height: 32px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.18s; flex-shrink: 0; align-self: end; }
+.del-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+/* Import panel */
+.import-panel { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+.import-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.import-tab { flex: 1; padding: 10px; background: transparent; border: none; color: var(--muted); font-size: 12px; font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: all 0.18s; border-bottom: 2px solid transparent; }
+.import-tab:hover { color: var(--text); }
+.import-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(0,229,255,0.04); }
+.import-body { display: none; padding: 14px; }
+.import-body.active { display: block; }
+.import-body textarea { width: 100%; min-height: 100px; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 12px; padding: 10px 13px; outline: none; resize: vertical; line-height: 1.6; transition: border-color 0.18s; }
+.import-body textarea:focus { border-color: var(--accent); }
+.import-btn { background: var(--accent); color: #0a0a0c; border: none; border-radius: 6px; padding: 8px 16px; font-size: 12px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: all 0.18s; white-space: nowrap; }
+.import-btn:hover:not(:disabled) { background: #33ecff; }
+.import-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.import-status { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+.import-status.ok { color: var(--accent3); }
+.import-status.err { color: var(--danger); }
+.csv-drop { border: 2px dashed var(--border); border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.18s; }
+.csv-drop:hover, .csv-drop.drag { border-color: var(--accent); background: rgba(0,229,255,0.04); }
+
+/* Premise panel */
+.premise-panel { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
+.premise-row { display: flex; align-items: center; gap: 8px; }
+.premise-key { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--dim); letter-spacing: 0.08em; white-space: nowrap; min-width: 50px; }
+.premise-val { font-size: 12px; color: var(--text); }
+.premise-val.ok { color: var(--accent3); }
+.premise-val.warn { color: var(--warn); }
+.premise-val.ng { color: var(--danger); }
+
+/* Submit */
+.submit-btn { width: 100%; padding: 15px; background: var(--accent); color: #0a0a0c; border: none; border-radius: 8px; font-family: 'Noto Sans JP', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; letter-spacing: 0.04em; margin-top: 8px; }
+.submit-btn:hover:not(:disabled) { background: #33ecff; transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,229,255,0.18); }
+.submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Error */
+.err { display: none; background: rgba(255,77,77,0.07); border: 1px solid rgba(255,77,77,0.2); border-radius: 7px; padding: 12px 16px; font-size: 13px; color: var(--danger); margin-bottom: 12px; }
+.err.on { display: block; }
+
+/* Loading */
+.loading { display: none; text-align: center; padding: 56px; }
+.loading.on { display: block; }
+.ld-dots { display: flex; justify-content: center; gap: 8px; margin-bottom: 14px; }
+.ld-dots span { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; animation: ldp 1.2s ease-in-out infinite; }
+.ld-dots span:nth-child(2) { animation-delay: 0.2s; background: var(--accent2); }
+.ld-dots span:nth-child(3) { animation-delay: 0.4s; background: var(--accent3); }
+@keyframes ldp { 0%,80%,100% { transform: scale(0.5); opacity: 0.3; } 40% { transform: scale(1.1); opacity: 1; } }
+.ld-txt { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.1em; }
+
+/* Result */
+.result { display: none; } .result.on { display: block; }
+.res-hdr { padding: 14px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.res-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; }
+.res-acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ai-badge { font-family: 'DM Mono', monospace; font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(0,229,255,0.08); color: var(--accent); border: 1px solid rgba(0,229,255,0.18); }
+.mode-badge { font-family: 'DM Mono', monospace; font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(123,97,255,0.08); color: var(--accent2); border: 1px solid rgba(123,97,255,0.18); }
+.ghost-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 5px 11px; border-radius: 6px; font-size: 11px; font-family: 'DM Mono', monospace; cursor: pointer; transition: all 0.18s; white-space: nowrap; }
+.ghost-btn:hover { border-color: var(--muted); color: var(--text); }
+.res-body { padding: 28px 32px; }
+.memo-row { padding: 0 32px 20px; }
+.res-body h2 { font-size: 16px; font-weight: 700; color: var(--accent); margin: 28px 0 10px; padding: 8px 12px; background: rgba(0,229,255,0.04); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; }
+.res-body h2:first-child { margin-top: 0; }
+.res-body h3 { font-size: 14px; font-weight: 500; color: var(--accent2); margin: 18px 0 6px; }
+.res-body p { font-size: 13px; margin-bottom: 10px; line-height: 1.8; }
+.res-body ul { padding-left: 18px; margin-bottom: 10px; }
+.res-body li { font-size: 13px; line-height: 1.8; margin-bottom: 3px; }
+.res-body strong { color: var(--warn); font-weight: 500; }
+.res-body em { color: var(--accent3); font-style: normal; }
+.res-body table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 12px; }
+.res-body th { background: var(--surface2); color: var(--accent); padding: 8px 11px; text-align: left; font-weight: 500; font-size: 11px; border: 1px solid var(--border); }
+.res-body td { padding: 8px 11px; border: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+.res-body tr:hover td { background: rgba(255,255,255,0.015); }
+.res-body blockquote { border-left: 3px solid var(--accent2); padding: 10px 18px; background: rgba(123,97,255,0.05); margin: 14px 0; border-radius: 0 6px 6px 0; font-size: 13px; color: var(--muted); }
+.res-body pre { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; margin: 14px 0; }
+.res-body code { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent3); }
+
+/* Inline section edit */
+.sec-edit-wrap { margin-bottom: 4px; }
+.sec-edit-btn { display: inline-block; margin-left: 8px; background: transparent; border: 1px solid var(--border); color: var(--dim); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-family: 'DM Mono', monospace; cursor: pointer; vertical-align: middle; transition: all 0.15s; }
+.sec-edit-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+.sec-edit-panel { display: none; background: var(--surface2); border: 1px solid rgba(123,97,255,0.25); border-radius: 8px; padding: 12px 14px; margin: 6px 0 14px; }
+.sec-edit-panel.on { display: block; }
+.sec-edit-panel textarea { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 12px; padding: 8px 11px; resize: vertical; min-height: 56px; outline: none; line-height: 1.7; transition: border-color 0.18s; }
+.sec-edit-panel textarea:focus { border-color: var(--accent2); }
+.sec-edit-actions { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.sec-edit-run { background: var(--accent2); color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 12px; font-family: 'Noto Sans JP', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.18s; }
+.sec-edit-run:hover:not(:disabled) { background: #9d85ff; }
+.sec-edit-run:disabled { opacity: 0.5; cursor: not-allowed; }
+.sec-edit-cancel { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-family: 'DM Mono', monospace; cursor: pointer; transition: all 0.18s; }
+.sec-edit-cancel:hover { border-color: var(--muted); color: var(--text); }
+.sec-edit-status { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
+.sec-edit-status.running { color: var(--accent); }
+.sec-edit-status.done { color: var(--accent3); }
+.sec-edit-status.err { color: var(--danger); }
+
+/* JSON panel */
+.json-panel { display: none; margin-top: 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+.json-panel.on { display: block; }
+.json-panel pre { color: var(--accent3); font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
+.json-toggle { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 6px; font-size: 11px; font-family: 'DM Mono', monospace; cursor: pointer; transition: all 0.18s; }
+.json-toggle:hover { border-color: var(--accent3); color: var(--accent3); }
+
+/* Analysis stack tabs */
+.stack-bar { display: none; border-bottom: 1px solid var(--border); padding: 0 32px; background: var(--surface); overflow-x: auto; }
+.stack-bar.on { display: flex; }
+.stack-tabs { display: flex; gap: 0; align-items: flex-end; min-width: max-content; }
+.stack-tab { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border: none; background: transparent; color: var(--dim); font-size: 11px; font-family: 'DM Mono', monospace; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; }
+.stack-tab:hover { color: var(--text); }
+.stack-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(0,229,255,0.04); }
+.stack-tab .stk-idx { font-size: 9px; color: var(--dim); background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; }
+.stack-tab.active .stk-idx { color: var(--accent); border-color: rgba(0,229,255,0.3); }
+.stack-tab .stk-close { font-size: 12px; line-height: 1; color: var(--dim); margin-left: 2px; transition: color 0.15s; }
+.stack-tab:hover .stk-close { color: var(--danger); }
+
+/* JSON Import panel in result header */
+.json-import-area { display: none; padding: 14px 32px 16px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+.json-import-area.on { display: block; }
+.json-import-area textarea { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; padding: 10px 13px; min-height: 80px; resize: vertical; outline: none; line-height: 1.6; transition: border-color 0.18s; }
+.json-import-area textarea:focus { border-color: var(--accent3); }
+.json-import-area .import-actions { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.json-import-load { background: var(--accent3); color: #0a0a0c; border: none; border-radius: 6px; padding: 7px 16px; font-size: 12px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: all 0.18s; }
+.json-import-load:hover { background: #5cffab; }
+.json-import-or { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--dim); }
+.json-import-file { display: none; }
+
+/* History */
+.hist-item { border: 1px solid var(--border); border-radius: 8px; padding: 13px 15px; margin-bottom: 9px; transition: border-color 0.18s; }
+.hist-item:hover { border-color: var(--accent2); }
+.hist-meta { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 3px; }
+.hist-title { font-size: 13px; font-weight: 500; }
+.hist-date { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--dim); margin-left: 12px; white-space: nowrap; }
+.hist-sub { font-size: 11px; color: var(--muted); margin-bottom: 9px; }
+.hist-acts { display: flex; gap: 7px; flex-wrap: wrap; }
+.hist-reanalyze { color: var(--accent) !important; border-color: var(--accent) !important; }
+.new-analysis-btn { color: var(--accent3) !important; border-color: var(--accent3) !important; }
+
+/* ===== AdCP ===== */
+.adcp-card { border-color: rgba(123,97,255,0.3); }
+.adcp-badge { font-family: 'DM Mono', monospace; font-size: 9px; background: rgba(123,97,255,0.15); color: var(--accent2); border: 1px solid rgba(123,97,255,0.3); padding: 1px 7px; border-radius: 4px; margin-left: 8px; vertical-align: middle; letter-spacing: 0.1em; }
+.adcp-desc { font-size: 12px; color: var(--muted); line-height: 1.7; margin-bottom: 16px; border-left: 2px solid rgba(123,97,255,0.3); padding-left: 12px; }
+.adcp-actions { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.adcp-btn { background: var(--accent2); color: #fff; border: none; border-radius: 7px; padding: 9px 18px; font-size: 13px; font-family: 'Noto Sans JP', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.18s; }
+.adcp-btn:hover { background: #9d85ff; transform: translateY(-1px); }
+.adcp-btn-ghost { background: transparent; border: 1px solid var(--accent2); color: var(--accent2); border-radius: 7px; padding: 9px 18px; font-size: 13px; font-family: 'DM Mono', monospace; cursor: pointer; transition: all 0.18s; }
+.adcp-btn-ghost:hover { background: rgba(123,97,255,0.1); }
+.adcp-json { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent3); line-height: 1.7; white-space: pre-wrap; word-break: break-all; max-height: 400px; overflow-y: auto; }
+/* Agent Cards — v4.4スタイル */
+.adcp-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 16px; }
+.adcp-agent-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; transition: border-color 0.2s; position: relative; }
+.adcp-agent-card:hover { border-color: var(--accent2); }
+.adcp-agent-card.adcp-recommended { border-color: var(--accent3); }
+.adcp-rec-badge { position: absolute; top: 12px; right: 12px; font-family: 'DM Mono', monospace; font-size: 9px; background: rgba(57,255,110,0.15); color: var(--accent3); border: 1px solid rgba(57,255,110,0.3); border-radius: 4px; padding: 2px 7px; letter-spacing: 0.1em; }
+.adcp-agent-name { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 6px; }
+.adcp-agent-score { font-size: 36px; font-weight: 700; line-height: 1; margin-bottom: 12px; letter-spacing: -0.02em; }
+.adcp-agent-score span { font-size: 14px; font-weight: 400; color: var(--muted); }
+.adcp-agent-meta { font-size: 11px; color: var(--muted); margin-bottom: 12px; line-height: 1.8; }
+.adcp-agent-meta strong { color: var(--text); font-weight: 500; }
+.adcp-tag-list { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.adcp-tag { font-size: 10px; font-family: 'DM Mono', monospace; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; color: var(--dim); }
+.adcp-pos { border-color: rgba(57,255,110,0.25); color: var(--accent3); background: rgba(57,255,110,0.06); }
+.adcp-neg { border-color: rgba(255,77,77,0.25); color: var(--danger); background: rgba(255,77,77,0.06); }
+.adcp-alloc { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; margin-top: 14px; }
+.adcp-alloc-title { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.12em; margin-bottom: 12px; }
+.adcp-alloc-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.adcp-alloc-label { font-size: 12px; color: var(--text); min-width: 100px; }
+.adcp-alloc-bar-wrap { flex: 1; background: var(--surface); border-radius: 4px; height: 6px; overflow: hidden; }
+.adcp-alloc-bar { height: 100%; border-radius: 4px; transition: width 0.7s cubic-bezier(0.4,0,0.2,1); }
+.adcp-alloc-pct { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); min-width: 36px; text-align: right; }
+/* Execution Profile */
+.adcp-agent-execution { margin-top: 12px; padding: 10px 12px; background: rgba(123,97,255,0.06); border: 1px solid rgba(123,97,255,0.18); border-radius: 8px; }
+.execution-title { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--accent2); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
+.execution-row { font-size: 10px; color: var(--muted); line-height: 1.6; }
+.execution-row strong { color: var(--text); }
+.execution-note { margin-top: 6px; font-size: 10px; color: var(--dim); line-height: 1.6; }
+.allocator-tension { margin-top: 10px; }
+.allocator-quality { margin-top: 10px; font-size: 11px; color: var(--muted); }
+.quality-row { line-height: 1.6; }
+.quality-basis { font-size: 10px; color: var(--dim); margin-top: 4px; font-style: italic; }
+/* Scenario recommended */
+.scenario-card-recommended { border-color: rgba(57,255,110,0.35); }
+.scenario-rec-badge { font-family: 'DM Mono', monospace; font-size: 9px; background: rgba(57,255,110,0.12); color: var(--accent3); border: 1px solid rgba(57,255,110,0.25); padding: 1px 6px; border-radius: 4px; margin-left: 7px; vertical-align: middle; letter-spacing: 0.08em; }
+/* Scenario Agent */
+.scenario-section { margin-top: 14px; }
+.scenario-header-row { margin-bottom: 12px; }
+.scenario-title { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 4px; }
+.scenario-subtitle { font-size: 11px; color: var(--dim); font-family: 'DM Mono', monospace; }
+.scenario-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.scenario-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; transition: border-color 0.2s; }
+.scenario-card:hover { border-color: var(--accent2); }
+.scenario-card-label { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 8px; }
+.scenario-card-summary { font-size: 12px; color: var(--muted); line-height: 1.7; margin-bottom: 12px; }
+.scenario-mini-bars { margin-bottom: 12px; }
+.scenario-mini-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.scenario-mini-label { font-size: 11px; color: var(--muted); min-width: 58px; }
+.scenario-mini-bar-wrap { flex: 1; background: var(--surface); border-radius: 3px; height: 5px; overflow: hidden; }
+.scenario-mini-bar { height: 100%; border-radius: 3px; transition: width 0.7s cubic-bezier(0.4,0,0.2,1); }
+.scenario-mini-pct { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); min-width: 30px; text-align: right; }
+.scenario-meta { border-top: 1px solid var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.scenario-meta-row { display: flex; gap: 8px; align-items: flex-start; }
+.scenario-meta-key { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; min-width: 52px; padding-top: 2px; }
+.scenario-meta-val { font-size: 11px; color: var(--muted); line-height: 1.6; }
+.scenario-risk { color: rgba(255,77,77,0.8); }
+/* Allocator Agent Panel */
+.allocator-panel { background: var(--surface); border: 1px solid rgba(123,97,255,0.3); border-radius: 10px; padding: 18px 20px; margin-top: 14px; }
+.allocator-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.allocator-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+.allocator-strategy { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.05em; }
+.allocator-review { font-family: 'DM Mono', monospace; font-size: 9px; background: rgba(255,184,0,0.1); color: var(--warn); border: 1px solid rgba(255,184,0,0.3); padding: 2px 8px; border-radius: 4px; margin-left: auto; }
+.allocator-summary { font-size: 12px; color: var(--muted); line-height: 1.7; margin-bottom: 12px; padding: 10px 14px; background: var(--surface2); border-radius: 6px; }
+.allocator-constraints { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.alloc-constraint { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--warn); background: rgba(255,184,0,0.06); border: 1px solid rgba(255,184,0,0.2); border-radius: 4px; padding: 2px 8px; }
+.allocator-reasoning-title { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent2); letter-spacing: 0.1em; margin-bottom: 10px; padding-top: 12px; border-top: 1px solid var(--border); }
+.allocator-reasoning { display: flex; flex-direction: column; gap: 8px; }
+.reasoning-row { display: grid; grid-template-columns: 90px 44px 1fr; gap: 10px; align-items: start; padding: 8px 12px; background: var(--surface2); border-radius: 6px; }
+.reasoning-agent { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; }
+.reasoning-pct { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700; text-align: right; }
+.reasoning-text { font-size: 11px; color: var(--muted); line-height: 1.6; }
+</style>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-eyebrow">Marketing Science</div>
+    <h1>メディアプランニング<br><em>データドリブン版</em><span class="v-badge">v5.13 Gateway</span></h1>
+    <p class="hdr-sub">実績データと仮説を入力して、根拠のある予算配分設計を行います</p>
+  </div>
+
+  <!-- AI + Key + Mode -->
+  <div class="card">
+    <div class="card-title">Rakuten AI Gateway</div>
+    <div class="ai-row">
+      <button class="ai-btn active" data-ai="claude" onclick="selectAI('claude')">
+        <span class="ai-dot"></span>Sonnet<span style="font-size:10px;opacity:0.5;margin-left:2px">4.6</span>
+      </button>
+      <button class="ai-btn" data-ai="haiku" onclick="selectAI('haiku')">
+        <span class="ai-dot"></span>Haiku<span style="font-size:10px;opacity:0.5;margin-left:2px">4.5</span><span class="free-tag">速い</span>
+      </button>
+      <button class="ai-btn" data-ai="gemini" onclick="selectAI('gemini')">
+        <span class="ai-dot"></span>Gemini<span class="free-tag">Flash-lite</span>
+      </button>
+      <button class="ai-btn" data-ai="rakuten" onclick="selectAI('rakuten')">
+        <span class="ai-dot"></span>Rakuten AI<span style="font-size:10px;opacity:0.5;margin-left:2px">3.0</span>
+      </button>
+    </div>
+
+    <div class="key-area active" id="key-claude">
+      <div class="key-row"><input type="password" id="apiKey-claude" placeholder="raik-..." /><button class="btn-sm" onclick="saveKey('claude')">保存</button></div>
+      <div class="key-st" id="keySt-claude"></div>
+    </div>
+    <div class="key-area" id="key-haiku">
+      <div class="key-row"><input type="password" id="apiKey-haiku" placeholder="raik-...（Sonnetと同じGatewayキーで可）" /><button class="btn-sm" onclick="saveKey('haiku')">保存</button></div>
+      <div class="key-st" id="keySt-haiku"></div>
+      <div class="key-hint">Rakuten AI GatewayキーはSonnetと共通です</div>
+    </div>
+    <div class="key-area" id="key-gemini">
+      <div class="key-row"><input type="password" id="apiKey-gemini" placeholder="raik-..." /><button class="btn-sm" onclick="saveKey('gemini')">保存</button></div>
+      <div class="key-st" id="keySt-gemini"></div>
+      <div class="key-hint">Rakuten AI Gateway経由でGeminiを呼び出します</div>
+    </div>
+    <div class="key-area" id="key-rakuten">
+      <div class="key-row"><input type="password" id="apiKey-rakuten" placeholder="raik-..." /><button class="btn-sm" onclick="saveKey('rakuten')">保存</button></div>
+      <div class="key-st" id="keySt-rakuten"></div>
+      <div class="key-hint">Rakuten AI in-house modelをGateway経由で呼び出します</div>
+    </div>
+
+    <!-- Output mode + JSON toggle -->
+    <div class="mode-row">
+      <span class="mode-label">出力モード</span>
+      <select class="mode-select" id="outputMode" onchange="onModeChange()">
+        <option value="light">ライト — 予算配分のみ（CV数含む）</option>
+        <option value="standard" selected>標準 — 配分 + CV比較3パターン</option>
+        <option value="full">フル — 全分析（CTR/CVR分解・改善シナリオ）</option>
+      </select>
+      <div class="json-toggle-wrap">
+        <label class="toggle-switch">
+          <input type="checkbox" id="jsonToggle" />
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-label">構造化JSON出力</span>
+      </div>
+      <span class="mode-desc" id="modeDesc">Gemini/Haikuに推奨</span>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <div class="card" id="formCard">
+    <div class="card-title"><span class="num">01</span> キャンペーン基本情報</div>
+    <div class="fg">
+      <div class="f"><label>業種・事業内容<span class="req">*</span></label><input type="text" id="industry" placeholder="例：BtoB SaaS / EC / 飲食チェーン" /></div>
+      <div class="f"><label>キャンペーン目的<span class="req">*</span></label>
+        <select id="objective">
+          <option value="">選択してください</option>
+          <option value="認知拡大">認知拡大（ブランド認知・リーチ）</option>
+          <option value="リード獲得">リード獲得（資料請求・問い合わせ）</option>
+          <option value="アプリDL">アプリDL促進</option>
+          <option value="EC購買">EC購買・コンバージョン</option>
+          <option value="来店促進">来店促進</option>
+          <option value="採用">採用・人材</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg c3">
+      <div class="f"><label>月額総予算<span class="req">*</span></label>
+        <select id="budget">
+          <option value="">選択</option>
+          <option value="〜50万円">〜50万円</option>
+          <option value="50〜200万円">50〜200万円</option>
+          <option value="200〜500万円">200〜500万円</option>
+          <option value="500〜1,000万円">500〜1,000万円</option>
+          <option value="1,000万円以上">1,000万円以上</option>
+        </select>
+      </div>
+      <div class="f"><label>期間</label>
+        <select id="duration" onchange="toggleDateRange()">
+          <option value="">選択</option>
+          <option value="1ヶ月">1ヶ月（単発）</option>
+          <option value="2〜3ヶ月">2〜3ヶ月</option>
+          <option value="半年">半年</option>
+          <option value="通年">通年</option>
+          <option value="指定期間">指定期間（日付入力）</option>
+        </select>
+        <div id="dateRangeArea" style="display:none;margin-top:6px">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <div class="f" style="flex:1;min-width:100px"><label style="font-size:10px">開始 (MM/DD)</label><input type="text" id="dateFrom" placeholder="例：04/01" pattern="\d{2}/\d{2}" maxlength="5" /></div>
+            <div style="color:var(--dim);padding-top:16px">〜</div>
+            <div class="f" style="flex:1;min-width:100px"><label style="font-size:10px">終了 (MM/DD)</label><input type="text" id="dateTo" placeholder="例：06/30" pattern="\d{2}/\d{2}" maxlength="5" /></div>
+          </div>
+        </div>
+      </div>
+      <div class="f"><label>BtoB / BtoC<span class="req">*</span></label>
+        <select id="btob">
+          <option value="">選択</option>
+          <option value="BtoC">BtoC（一般消費者）</option>
+          <option value="BtoB">BtoB（法人）</option>
+          <option value="両方">両方</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sec-hd">02 — ターゲット</div>
+    <div class="fg">
+      <div class="f">
+        <label>年齢層<span class="req">*</span><span class="opt">（複数選択可）</span></label>
+        <div class="age-checks" id="ageChecks">
+          <label class="age-chk"><input type="checkbox" value="10〜20代"> 10〜20代（Z世代）</label>
+          <label class="age-chk"><input type="checkbox" value="20〜30代"> 20〜30代（ミレニアル）</label>
+          <label class="age-chk"><input type="checkbox" value="30〜40代"> 30〜40代</label>
+          <label class="age-chk"><input type="checkbox" value="40〜50代"> 40〜50代</label>
+          <label class="age-chk"><input type="checkbox" value="50代以上"> 50代以上</label>
+          <label class="age-chk"><input type="checkbox" value="幅広い"> 幅広い（全年代）</label>
+        </div>
+      </div>
+      <div class="f"><label>ターゲット詳細<span class="opt">（自由記述）</span></label><input type="text" id="targetDetail" placeholder="例：都市部在住の20〜35歳女性、美容意識高め" /></div>
+    </div>
+
+    <div class="sec-hd">03 — 目標KPI・CV設計</div>
+    <div class="fg c3">
+      <div class="f"><label>目標CPA<span class="opt">（円）</span></label><input type="number" id="targetCPA" placeholder="例：3000" /></div>
+      <div class="f"><label>目標CVR<span class="opt">（%）</span></label><input type="number" id="targetCVR" placeholder="例：2.5" step="0.1" /></div>
+      <div class="f"><label>目標CV数/月</label><input type="number" id="targetCV" placeholder="例：100" /></div>
+    </div>
+    <div class="fg">
+      <div class="f"><label>CVポイント<span class="opt">（具体的なCV定義）</span></label><input type="text" id="cvPoint" placeholder="例：来店予約数 / フォーム送信 / 商品購入完了" /></div>
+      <div class="f"><label>計測環境<span class="opt">（数値基準）</span></label>
+        <select id="measureEnv">
+          <option value="">選択（任意）</option>
+          <option value="媒体管理画面数値のみ">媒体管理画面数値のみ</option>
+          <option value="計測ツール（GA4等）を使用">計測ツール（GA4等）を使用</option>
+          <option value="媒体管理画面＋計測ツール併用">媒体管理画面＋計測ツール併用</option>
+          <option value="計測環境未整備">計測環境未整備</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sec-hd">04 — 過去実績データ<span style="font-size:11px;color:var(--dim);margin-left:8px;text-transform:none;font-family:'Noto Sans JP'">（あるほど精度が上がります）</span></div>
+
+    <!-- インポートUI -->
+    <div class="import-panel">
+      <div class="import-tabs">
+        <button class="import-tab active" onclick="switchImportTab('text')">📋 テキスト貼り付け</button>
+        <button class="import-tab" onclick="switchImportTab('csv')">📄 CSV読み込み</button>
+        <button class="import-tab" onclick="switchImportTab('json')">📥 プラン読込 (JSON)</button>
+      </div>
+
+      <div class="import-body active" id="import-text">
+        <textarea id="importTextArea" placeholder="レポートやメモをそのまま貼り付けてください。AIが媒体名・月額・CPA・CTR・CVRを自動抽出します。
+
+例：
+Meta広告　費用300万円　CPA¥3,200　CTR1.8%
+Google P-Max　¥1,500,000　CPA4,500円
+..."></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+          <button class="import-btn" onclick="importFromText()">AIで抽出 →</button>
+          <span class="import-status" id="importTextStatus"></span>
+        </div>
+      </div>
+
+      <div class="import-body" id="import-csv">
+        <div class="csv-drop" id="csvDrop" onclick="document.getElementById('csvFile').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleCsvDrop(event)">
+          <div style="font-size:24px;margin-bottom:8px">📄</div>
+          <div style="font-size:13px;color:var(--muted)">CSVをドロップ、またはクリックして選択</div>
+          <div style="font-size:11px;color:var(--dim);margin-top:4px">形式：媒体名, 月額, 運用月数, CPA, CTR, CVR</div>
+        </div>
+        <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleCsvFile(event)" />
+        <span class="import-status" id="importCsvStatus"></span>
+      </div>
+
+      <div class="import-body" id="import-json">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.7">「↓ Report JSON」でダウンロードしたファイルを読み込むと、他の人が作ったプランをそのまま分析画面で参照できます。</div>
+        <textarea id="jsonImportText" placeholder="JSONをここに貼り付け、または下のボタンでファイルを選択してください…" style="min-height:80px"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+          <button class="import-btn" onclick="loadReportFromJson()">読み込む →</button>
+          <span style="font-size:11px;color:var(--dim)">または</span>
+          <button class="btn-sm" onclick="document.getElementById('jsonImportFile').click()">ファイルを選択</button>
+          <input type="file" id="jsonImportFile" style="display:none" accept=".json" onchange="loadReportFromFile(event)"/>
+          <span class="import-status" id="importJsonStatus"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="media-block" id="mediaRows"></div>
+    <button class="add-row-btn" onclick="addMediaRow()">＋ 媒体を追加</button>
+
+    <div class="sec-hd">05 — 補足情報</div>
+    <div class="fg c1"><div class="f"><label>試したい・気になる媒体<span class="opt">（実績なし）</span></label><input type="text" id="wishMedia" placeholder="例：TikTok、LinkedIn広告" /></div></div>
+    <div class="fg c1"><div class="f"><label>制約・懸念事項</label><textarea id="constraints" placeholder="例：クリエイティブ制作リソースが少ない / 内製運用 / 競合CPCが高い"></textarea></div></div>
+    <div class="fg c1"><div class="f"><label>その他・自由記述</label><textarea id="freeNote" placeholder="例：YouTubeの視認率が低かった / 季節性あり / 特定地域集中"></textarea></div></div>
+
+    <div class="sec-hd">06 — 媒体別制約<span style="font-size:11px;color:var(--dim);margin-left:8px;text-transform:none;font-family:'Noto Sans JP'">（任意：最低・最大配分を指定）</span></div>
+    <div class="media-constraint-block" id="constraintRows"></div>
+    <button class="add-row-btn" onclick="addConstraintRow()">＋ 制約を追加</button>
+    <div class="field-hint" style="margin-top:8px">例：TikTok 最低20% 最大50% ／ Google 最低10% ／ YouTube 最大30%</div>
+
+    <div class="premise-panel" id="premisePanel">
+      <div class="premise-row"><span class="premise-key">過去実績</span><span class="premise-val" id="pr-data">—</span></div>
+      <div class="premise-row"><span class="premise-key">最適化</span><span class="premise-val" id="pr-opt">—</span></div>
+      <div class="premise-row"><span class="premise-key">AI</span><span class="premise-val" id="pr-ai">—</span></div>
+      <div class="premise-row"><span class="premise-key">モード</span><span class="premise-val" id="pr-mode">—</span></div>
+    </div>
+
+    <div class="err" id="errMsg">エラーが発生しました。APIキーを確認するか、しばらくしてからお試しください。</div>
+    <button class="submit-btn" id="submitBtn" onclick="generate()">分析を実行する →</button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="ld-dots"><span></span><span></span><span></span></div>
+    <div class="ld-txt" id="ldTxt">分析中...</div>
+  </div>
+
+  <!-- Result -->
+  <div class="result card" id="result">
+    <!-- Stack tabs (shown when ≥2 analyses in stack) -->
+    <div class="stack-bar" id="stackBar">
+      <div class="stack-tabs" id="stackTabs"></div>
+    </div>
+    <div class="res-hdr">
+      <div class="res-label">// 分析レポート</div>
+      <div class="res-acts">
+        <span class="ai-badge" id="aiBadge"></span>
+        <span class="mode-badge" id="modeBadge"></span>
+        <button class="json-toggle" id="jsonToggleBtn" onclick="toggleJSON()" style="display:none">{ } 構造化JSON</button>
+        <button class="ghost-btn" onclick="downloadHTML()">↓ HTML</button>
+        <button class="ghost-btn" onclick="downloadPDF()">↓ PDF</button>
+        <button class="ghost-btn" onclick="downloadAllocationCSV()">↓ CSV</button>
+        <button class="ghost-btn" onclick="downloadReportJSON()">↓ Report JSON</button>
+        <button class="ghost-btn" id="saveBtn" onclick="saveToHistory()">☆ 保存</button>
+        <button class="ghost-btn" onclick="resetForm()">← 再入力</button>
+        <button class="ghost-btn new-analysis-btn" onclick="startNewAnalysis()">＋ 新規分析</button>
+      </div>
+    </div>
+    <div class="res-body" id="resBody"></div>
+    <div class="memo-row">
+      <input type="text" id="histMemo" placeholder="メモ（任意）：案件名・用途など" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:12px;padding:7px 12px;outline:none;width:100%;transition:border-color 0.18s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"/>
+    </div>
+    <div class="json-panel" id="jsonPanel">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);margin-bottom:10px;letter-spacing:0.1em">// JSON OUTPUT</div>
+      <pre id="jsonOut"></pre>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="card" id="histSection" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="card-title" style="margin:0;border:none;padding:0">// 保存済みプラン</div>
+      <button class="ghost-btn" onclick="clearHistory()">全削除</button>
+    </div>
+    <div id="histList"></div>
+  </div>
+
+  <!-- ===== AdCP Ready Output ===== -->
+  <div class="card adcp-card" id="adcpSection" style="display:none">
+    <div class="card-title" style="color:var(--accent2)">
+      <span style="font-size:14px">⬡</span> AdCP Ready Output
+      <span class="adcp-badge">PoC</span>
+    </div>
+    <p class="adcp-desc">This output is an AdCP-compatible planning brief. It is designed for future integration with buyer agents, seller agents, and media inventory discovery APIs. No live media buying is executed from this tool.</p>
+    <div class="adcp-actions">
+      <button class="adcp-btn" onclick="generateAdcpBrief()">Generate AdCP Brief</button>
+      <button class="adcp-btn-ghost" id="copyAdcpBtn" onclick="copyAdcpJson()" style="display:none">Copy JSON</button>
+      <button class="adcp-btn-ghost" id="dlAdcpJsonBtn" onclick="downloadAdcpJson()" style="display:none">↓ JSON</button>
+      <button class="adcp-btn-ghost" id="dlAdcpHtmlBtn" onclick="downloadAdcpHtml()" style="display:none">↓ HTML</button>
+      <button class="adcp-btn-ghost" id="dlAdcpPdfBtn" onclick="downloadAdcpPdf()" style="display:none">↓ PDF</button>
+    </div>
+    <div id="adcpOutput" style="display:none">
+      <pre id="adcpJson" class="adcp-json"></pre>
+    </div>
+  </div>
+
+  <!-- ===== Ad Strategy Decision Simulator ===== -->
+  <div class="card adcp-card" id="adcpSimSection" style="display:none">
+    <div class="card-title" style="color:var(--accent2)">
+      <span style="font-size:14px">⬡</span> Ad Strategy Decision Simulator
+      <span class="adcp-badge">PoC</span>
+    </div>
+    <p class="adcp-desc">This simulation converts an AdCP-compatible brief into channel proposals, allocation logic, scenario comparison, and a planner-transferable strategy JSON. No live media buying is executed.</p>
+    <div class="adcp-actions">
+      <button class="adcp-btn" onclick="simulateAdcpProposals()">Simulate AdCP Proposals</button>
+      <button class="adcp-btn-ghost" id="dlSimHtmlBtn" onclick="downloadSimHtml()" style="display:none">↓ HTML</button>
+      <button class="adcp-btn-ghost" id="dlSimPdfBtn" onclick="downloadSimPdf()" style="display:none">↓ PDF</button>
+    </div>
+    <div id="adcpProposals"></div>
+    <div id="adcpAllocation" style="display:none">
+      <div class="adcp-alloc-title">Suggested Budget Allocation</div>
+      <div id="adcpAllocBars"></div>
+    </div>
+  </div>
+
+</div>
+<script>
+let currentAI = 'claude';
+const API_PROXY_URL = '/api/llm';
+let lastInput = {};
+const AI_LABELS = { claude: 'Claude Sonnet 4.6', haiku: 'Claude Haiku 4.5', gemini: 'Gemini 3.1 Flash-lite', rakuten: 'Rakuten AI 3.0' };
+const MODE_LABELS = { light: 'ライト', standard: '標準', full: 'フル' };
+const MODE_DESCS = {
+  light: 'Gemini / Haikuに推奨 — 最速・最安',
+  standard: 'バランス型 — 通常業務に最適',
+  full: 'Claude Sonnet推奨 — 詳細分析'
+};
+
+// ===== SYSTEM PROMPTS =====
+
+// 軽量版（Gemini/Haiku用 ライト・標準）
+const SYS_LIGHT = `デジタル広告メディアプランニングの専門家として予算配分を設計する。
+
+【絶対ルール】
+- CPA入力あり→必ず数値計算（想定CV=予算÷CPA）
+- 推測・感覚での配分禁止
+- CPA判明2媒体未満→最適化不可と明示してテスト配分
+- 役割（主力/補完/テスト）は配分確定後に定義
+
+【最適化手順】
+1. CPA（円）で順位付け（低いほど効率が良い）
+2. 効率順に配分（上限50%・最低2媒体・実績なし20%上限）
+3. CV数を再計算して検証
+
+【運用月数による信頼度・スケール判断】
+- 6ヶ月以上：データ信頼度「高」、スケール余地の推定に使用可
+- 2〜5ヶ月：データ信頼度「中」、傾向は参考になるが変動に注意
+- 1ヶ月以下または未入力：データ信頼度「低」、テストデータとして扱う
+
+【ユーザー制約がある場合は必ず遵守すること】`;
+
+// フル版（Claude Sonnet/GPT-4o用）
+const SYS_FULL = `デジタル広告メディアプランニング・マーケティングサイエンスの専門家として、データに基づく予算配分を設計する。
+
+【絶対ルール】
+- CPA入力あり→必ず数値計算（想定CV=予算÷CPA）
+- 推測・感覚での配分禁止。全配分に根拠を明記
+- CPA判明2媒体未満→⚠️最適化不可と冒頭に明示してテスト配分
+- 役割（主力/補完/テスト）は配分確定後に定義
+
+【最適化手順（必須）】
+1. CPA（円）で順位付け（低いほど効率が良い）
+2. 効率順に配分（上限50%・最低2媒体・実績なし20%上限）
+3. CV数を再計算して検証
+
+【CTR/CVR分解】
+- CPA ≒ (CPM÷CTR)÷CVR で分解
+- CTR低い→クリエイティブ課題 / CVR低い→LP課題 / 両方低い→ターゲ課題
+- CVRが高い媒体→予算優先 / CTR高くCVR低い→中配分 / 両方低い→削減/テスト
+
+【運用月数による信頼度・スケール判断】
+- 6ヶ月以上：データ信頼度「高」、スケール余地の推定に積極活用。予算増加時のCPA悪化リスクも評価すること
+- 2〜5ヶ月：データ信頼度「中」、傾向は参考になるが季節変動・テスト変更の影響を考慮
+- 1ヶ月以下または未入力：データ信頼度「低」、テストデータとして扱い配分は控えめに
+
+【ユーザー制約がある場合は必ず遵守すること】
+
+【媒体ベンチマーク（補完用）】
+Meta: CPM600〜1500円/CPC30〜120円 | Google検索: CPC100〜1000円 | PMAX: CPM100〜400円
+YouTube: CPV3〜15円 | TikTok: CPM500〜1200円 | LINE: CPM400〜900円
+X: CPE30〜100円 | LinkedIn: CPC200〜600円`;
+
+// ===== USER PROMPTS by MODE =====
+
+function buildUserPrompt(mode, data, includeJSON) {
+  const { industry, objective, budget, duration, btob, age, targetDetail,
+          targetCPA, targetCVR, targetCV, mediaStr, hasPastData,
+          wishMedia, constraints, freeNote, constraintStr, kpiStr } = data;
+
+  const base = `【基本情報】
+- 業種：${industry} / 目的：${objective} / 予算：${budget} / 期間：${duration||'未定'}
+- BtoB/BtoC：${btob} / ターゲット年齢：${age}
+- ターゲット詳細：${targetDetail||'なし'} / 制約：${constraints||'なし'}
+
+【KPI】${kpiStr}
+【過去実績データの有無】${hasPastData}
+${hasPastData === 'なし（業界ベンチマークで補完）' ? '⚠️ 過去実績なし：本プランは仮説ベースの配分です。実績データ入力後の再分析を推奨します。\n' : ''}${mediaStr}【試したい媒体（実績なし）】${wishMedia||'なし'}
+${freeNote ? '【備考】' + freeNote : ''}
+${constraintStr ? '【媒体別制約】\n' + constraintStr : ''}
+【重要指示】
+- 過去実績がある場合はそれを最優先で判断
+- 実績がない媒体はテスト扱いまたは除外
+- 主力/補完/テストに分けて設計（配分確定後に定義）
+- 配分理由を必ず説明。曖昧な一般論は禁止`;
+
+  let outputSpec = '';
+
+  if (mode === 'light') {
+    outputSpec = `
+【出力形式】
+## 1. 戦略サマリー（2〜3文）
+## 2. 予算配分案
+表：媒体名|CPA（円）|配分%|月額|想定CV数|役割|判断理由（簡潔に）|信頼度
+## 2-1. CV数サマリー
+- 配分前CV数 / 配分後CV数 / 差分
+## 3. 次のアクション（優先順に最大3つ）
+1. （最優先）
+2.
+3.`;
+  } else if (mode === 'standard') {
+    outputSpec = `
+【出力形式】
+## 1. 戦略サマリー（3〜5文）
+## 2. 予算配分案（最適化配分）
+表：媒体名|CPA（円）|配分%|月額|想定CV数|役割|判断理由|信頼度|数値前提（実績/ベンチマーク）
+## 2-1. CV数サマリー（3パターン比較）
+表：パターン|配分概要|合計CV数|最適配分との差分
+（最適配分・均等配分・過去配分ベースの3パターン）
+## 3. 実績あり媒体の評価
+## 4. 実績なし媒体の扱い
+## 5. リスクと対策
+## 6. 最初の1ヶ月のアクション
+## 7. 追加で必要なデータ`;
+  } else {
+    outputSpec = `
+【出力形式】
+
+## 0. 分析前提
+- データ状況：（過去実績あり/なし、CPA判明媒体数）
+- 分析確度：高 / 中 / 低（理由を1文で）
+- 数値前提：（実績データ使用 / 業界ベンチマーク使用 / 混在）
+
+## 1. 戦略（データに基づく判断）
+（実績データから導いた方針を3〜5文。事実と解釈を分けて書く）
+
+## 2. 仮説（実績なし媒体・不確実な部分）
+（過去実績がない場合や推定が含まれる場合は必ずここに分離して記述）
+
+## 3. 予算配分案（最適化配分）
+表：媒体名|CPA（円）|配分%|月額|想定CV数|役割|判断理由|信頼度|数値前提
+※信頼度は「高（実績6ヶ月以上）/ 中（実績2〜5ヶ月）/ 低（実績1ヶ月以下・なし）」で記載
+
+## 3-1. CV数サマリー（3パターン比較）
+表：パターン|配分概要|合計CV数|最適配分との差分
+（最適配分・均等配分・過去配分ベースの3パターン）
+
+## 3-2. パフォーマンス分解（CTR/CVR分析）
+表：媒体名|CTR評価|CVR評価|ボトルネック|改善余地|推奨アクション
+
+## 3-3. 改善シナリオ分析
+改善余地がある媒体：CTR+20% / CVR+20% それぞれのCPA・CV数を再計算
+
+## 4. 実績あり媒体の評価（スケール限界も言及）
+
+## 5. 実施しない施策
+表：媒体名|不採用理由|条件が変わった場合の再検討基準
+
+## 6. リスクと対策
+
+## 7. 最初の1ヶ月のアクション（優先順）
+1. （最優先）
+2.
+3.
+4.
+5.
+
+## 8. 追加で必要なデータ（精度向上のため）`;
+  }
+
+  const jsonSpec = includeJSON ? `
+最後に必ず以下のJSON形式で出力すること（\`\`\`jsonブロックで）：
+\`\`\`json
+{
+  "strategy_summary": "",
+  "budget_allocation": [{"channel":"","cv_efficiency":0,"allocation_percent":0,"monthly_budget":"","estimated_cv":0,"role":"","reason":"","confidence":"","bottleneck":"","improvement_potential":""}],
+  "cv_summary": {"optimized":0,"equal_distribution":0,"past_distribution":0},
+  "main_channels":[],"support_channels":[],"test_channels":[],
+  "risks":[],"next_actions":[],"additional_data_needed":[]
+}
+\`\`\`` : '';
+
+  return base + outputSpec + jsonSpec;
+}
+
+// ===== DATE RANGE TOGGLE =====
+function toggleDateRange() {
+  var sel = document.getElementById('duration');
+  var area = document.getElementById('dateRangeArea');
+  if (area) area.style.display = (sel && sel.value === '指定期間') ? 'block' : 'none';
+}
+
+// ===== MODE UI =====
+function onModeChange() {
+  const mode = document.getElementById('outputMode').value;
+  document.getElementById('modeDesc').textContent = MODE_DESCS[mode];
+  updatePremise();
+}
+
+// ===== AI SELECT =====
+function selectAI(ai) {
+  currentAI = ai;
+  document.querySelectorAll('.ai-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelector('.ai-btn[data-ai="' + ai + '"]').classList.add('active');
+  document.querySelectorAll('.key-area').forEach(function(a) { a.classList.remove('active'); });
+  document.getElementById('key-' + ai).classList.add('active');
+
+  // Auto-suggest mode
+  if (ai === 'gemini' || ai === 'haiku') {
+    const sel = document.getElementById('outputMode');
+    if (sel.value === 'full') { sel.value = 'standard'; }
+    if (ai === 'gemini') { sel.value = 'light'; }
+    onModeChange();
+  }
+  updatePremise();
+}
+
+function saveKey(ai) {
+  const key = document.getElementById('apiKey-' + ai).value.trim();
+  if (!key) return;
+  localStorage.setItem('mpv4key_' + ai, key);
+  const el = document.getElementById('keySt-' + ai);
+  el.textContent = '✓ 保存しました'; el.className = 'key-st ok';
+}
+
+window.addEventListener('load', function() {
+  addMediaRow();
+
+  // 年齢チェックボックス：「幅広い」と他の選択を排他制御
+  document.querySelectorAll('.age-chk').forEach(function(label) {
+    label.addEventListener('click', function(e) {
+      e.preventDefault();
+      const cb = label.querySelector('input');
+      const val = cb.value;
+      const allLabels = document.querySelectorAll('.age-chk');
+      const allCbs = document.querySelectorAll('#ageChecks input');
+
+      if (val === '幅広い') {
+        // 幅広いをONにしたら他を全解除
+        const newState = !cb.checked;
+        allCbs.forEach(function(c) { c.checked = false; });
+        allLabels.forEach(function(l) { l.classList.remove('checked'); });
+        if (newState) { cb.checked = true; label.classList.add('checked'); }
+      } else {
+        // 他の年代を選んだら「幅広い」を解除
+        const hiroCb = document.querySelector('#ageChecks input[value="幅広い"]');
+        const hiroLabel = hiroCb ? hiroCb.closest('.age-chk') : null;
+        if (hiroCb) { hiroCb.checked = false; }
+        if (hiroLabel) { hiroLabel.classList.remove('checked'); }
+        cb.checked = !cb.checked;
+        label.classList.toggle('checked', cb.checked);
+      }
+    });
+  });
+
+  ['claude','haiku','gemini','rakuten'].forEach(function(ai) {
+    const saved = localStorage.getItem('mpv4key_' + ai);
+    if (saved) {
+      document.getElementById('apiKey-' + ai).value = saved;
+      const el = document.getElementById('keySt-' + ai);
+      el.textContent = '✓ 保存済み'; el.className = 'key-st ok';
+    }
+  });
+  onModeChange();
+  updatePremise();
+  renderHistory();
+});
+
+// ===== IMPORT =====
+function switchImportTab(tab) {
+  document.querySelectorAll('.import-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.import-body').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelector('.import-tab[onclick*="' + tab + '"]').classList.add('active');
+  document.getElementById('import-' + tab).classList.add('active');
+}
+
+async function importFromText() {
+  const text = document.getElementById('importTextArea').value.trim();
+  if (!text) return;
+
+  const key = localStorage.getItem('mpv4key_' + currentAI) || document.getElementById('apiKey-' + currentAI).value.trim();
+  if (!key) { alert(AI_LABELS[currentAI] + ' のAPIキーを入力・保存してください'); return; }
+
+  const btn = document.querySelector('#import-text .import-btn');
+  const status = document.getElementById('importTextStatus');
+  btn.disabled = true;
+  btn.textContent = '抽出中...';
+  status.textContent = '';
+  status.className = 'import-status';
+
+  const prompt = `以下のテキストから広告媒体の実績データを抽出してください。
+JSONで返してください。フィールドは name（媒体名）, budget（月額・円・数値のみ）, months（運用月数・数値のみ）, cpa（CPA・円・数値のみ）, ctr（CTR・%・数値のみ）, cvr（CVR・%・数値のみ）。
+不明なフィールドは空文字。複数媒体がある場合は配列で。JSONのみ返し、説明文は不要。
+
+テキスト：
+${text}`;
+
+  try {
+    let raw = '';
+    if (currentAI === 'claude') raw = await callGatewayAnthropic(key, 'あなたはデータ抽出の専門家です。JSONのみを返してください。', prompt, 'claude-haiku-4-5-20251001');
+    else if (currentAI === 'haiku') raw = await callGatewayAnthropic(key, 'あなたはデータ抽出の専門家です。JSONのみを返してください。', prompt, 'claude-haiku-4-5-20251001');
+    else if (currentAI === 'gemini') raw = await callGatewayGemini(key, 'あなたはデータ抽出の専門家です。JSONのみを返してください。', prompt, 'gemini-3.1-flash-lite-preview');
+    else raw = await callGatewayRakutenAI(key, 'あなたはデータ抽出の専門家です。JSONのみを返してください。', prompt, 'rakutenai-3.0');
+
+    const clean = raw.replace(/```json|```/g, '').trim();
+    let parsed = JSON.parse(clean);
+    if (!Array.isArray(parsed)) parsed = [parsed];
+
+    // 既存行をクリアして追加
+    document.getElementById('mediaRows').innerHTML = '';
+    rowId = 0;
+    parsed.forEach(function(d) { if (d.name) addMediaRow(d); });
+
+    status.textContent = '✓ ' + parsed.filter(function(d){ return d.name; }).length + '媒体を抽出しました';
+    status.className = 'import-status ok';
+    document.getElementById('importTextArea').value = '';
+  } catch(e) {
+    console.error('[import] error:', e);
+    status.textContent = '抽出に失敗しました。手動で入力してください。';
+    status.className = 'import-status err';
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'AIで抽出 →';
+}
+
+function parseAndLoadCsv(text) {
+  const lines = text.trim().split('\n');
+  const results = [];
+  lines.forEach(function(line) {
+    if (!line.trim() || line.startsWith('#')) return;
+    // ヘッダー行を検出してスキップ
+    if (/媒体|channel|name/i.test(line.split(',')[0])) return;
+    const cols = line.split(',').map(function(c) { return c.trim().replace(/"/g, ''); });
+    if (!cols[0]) return;
+    results.push({
+      name: cols[0] || '',
+      budget: cols[1] ? cols[1].replace(/[^0-9.]/g, '') : '',
+      months: cols[2] ? cols[2].replace(/[^0-9.]/g, '') : '',
+      cpa: cols[3] ? cols[3].replace(/[^0-9.]/g, '') : '',
+      ctr: cols[4] ? cols[4].replace(/[^0-9.]/g, '') : '',
+      cvr: cols[5] ? cols[5].replace(/[^0-9.]/g, '') : ''
+    });
+  });
+  return results;
+}
+
+function handleCsvFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    loadCsvData(e.target.result, file.name);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function handleCsvDrop(event) {
+  event.preventDefault();
+  document.getElementById('csvDrop').classList.remove('drag');
+  const file = event.dataTransfer.files[0];
+  if (!file || !file.name.endsWith('.csv')) {
+    document.getElementById('importCsvStatus').textContent = 'CSVファイルを選択してください';
+    document.getElementById('importCsvStatus').className = 'import-status err';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) { loadCsvData(e.target.result, file.name); };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function loadCsvData(text, filename) {
+  const status = document.getElementById('importCsvStatus');
+  try {
+    const data = parseAndLoadCsv(text);
+    if (!data.length) { status.textContent = 'データが見つかりませんでした'; status.className = 'import-status err'; return; }
+    document.getElementById('mediaRows').innerHTML = '';
+    rowId = 0;
+    data.forEach(function(d) { addMediaRow(d); });
+    status.textContent = '✓ ' + data.length + '媒体を読み込みました（' + filename + '）';
+    status.className = 'import-status ok';
+  } catch(e) {
+    status.textContent = '読み込みエラー：' + e.message;
+    status.className = 'import-status err';
+  }
+}
+
+// ===== MEDIA ROWS =====
+let rowId = 0;
+function addMediaRow(d) {
+  rowId++; const id = rowId; d = d || {};
+  const row = document.createElement('div');
+  row.className = 'media-row'; row.id = 'mrow-' + id;
+  row.innerHTML =
+    '<div class="f"><label>媒体名</label><input type="text" id="mn-'+id+'" placeholder="例：Meta広告" value="'+(d.name||'')+'"/></div>' +
+    '<div class="f"><label>月額実績（円）</label><input type="number" id="mb-'+id+'" placeholder="500000" value="'+(d.budget||'')+'"/></div>' +
+    '<div class="f"><label>運用月数</label><input type="number" id="mmo-'+id+'" placeholder="6" min="1" value="'+(d.months||'')+'"/></div>' +
+    '<div class="f"><label>CPA（円）</label><input type="number" id="mcpa-'+id+'" placeholder="3000" value="'+(d.cpa||'')+'"/></div>' +
+    '<div class="f"><label>CTR（%）</label><input type="number" id="mctr-'+id+'" step="0.01" placeholder="1.2" value="'+(d.ctr||'')+'"/></div>' +
+    '<div class="f"><label>CVR（%）</label><input type="number" id="mcvr-'+id+'" step="0.01" placeholder="2.5" value="'+(d.cvr||'')+'"/></div>' +
+    '<button class="del-btn" onclick="delRow('+id+')">×</button>';
+  document.getElementById('mediaRows').appendChild(row);
+  updatePremise();
+}
+function delRow(id) { const el = document.getElementById('mrow-' + id); if (el) { el.remove(); updatePremise(); } }
+function getMediaData() {
+  const result = [];
+  document.querySelectorAll('.media-row').forEach(function(row) {
+    const rid = row.id.replace('mrow-', '');
+    const name = document.getElementById('mn-' + rid) ? document.getElementById('mn-' + rid).value.trim() : '';
+    if (!name) return;
+    result.push({ name, budget: document.getElementById('mb-'+rid).value, months: document.getElementById('mmo-'+rid).value, cpa: document.getElementById('mcpa-'+rid).value, ctr: document.getElementById('mctr-'+rid).value, cvr: document.getElementById('mcvr-'+rid).value });
+  });
+  return result;
+}
+function getAge() {
+  const checked = [];
+  document.querySelectorAll('#ageChecks input:checked').forEach(function(cb) { checked.push(cb.value); });
+  return checked.join('・');
+}
+
+// ===== CONSTRAINT ROWS =====
+let constraintId = 0;
+function addConstraintRow() {
+  constraintId++; const id = constraintId;
+  const row = document.createElement('div');
+  row.className = 'constraint-row'; row.id = 'crow-' + id;
+  row.innerHTML =
+    '<div class="f"><label>媒体名</label><input type="text" id="cn-'+id+'" placeholder="例：TikTok"/></div>' +
+    '<div class="f"><label>最低%</label><input type="number" id="cmin-'+id+'" placeholder="20" min="0" max="100"/></div>' +
+    '<div class="f"><label>最大%</label><input type="number" id="cmax-'+id+'" placeholder="50" min="0" max="100"/></div>' +
+    '<button class="del-btn" onclick="delConstraintRow('+id+')">×</button>';
+  document.getElementById('constraintRows').appendChild(row);
+}
+function delConstraintRow(id) { const el = document.getElementById('crow-' + id); if (el) el.remove(); }
+function getConstraintData() {
+  const result = [];
+  document.querySelectorAll('.constraint-row').forEach(function(row) {
+    const rid = row.id.replace('crow-', '');
+    const name = document.getElementById('cn-'+rid) ? document.getElementById('cn-'+rid).value.trim() : '';
+    if (!name) return;
+    result.push({ name, min: document.getElementById('cmin-'+rid).value, max: document.getElementById('cmax-'+rid).value });
+  });
+  return result;
+}
+
+// ===== MARKDOWN =====
+function md2html(text) {
+  const lines = text.split('\n');
+  let html = '', inUl = false, inTable = false, tableRows = [], inCode = false, codeBlock = '';
+  function flushUl() { if (inUl) { html += '</ul>'; inUl = false; } }
+  function flushTable() {
+    if (!inTable) return;
+    if (tableRows.length > 0) {
+      let t = '<table>';
+      tableRows.forEach(function(row, i) {
+        const cells = row.split('|').map(function(c) { return c.trim(); }).filter(function(c) { return c; });
+        const tag = i === 0 ? 'th' : 'td';
+        t += '<tr>' + cells.map(function(c) { return '<'+tag+'>'+fmt(c)+'</'+tag+'>'; }).join('') + '</tr>';
+      });
+      html += t + '</table>';
+    }
+    inTable = false; tableRows = [];
+  }
+  lines.forEach(function(line) {
+    if (line.startsWith('```')) {
+      if (!inCode) { flushUl(); flushTable(); inCode = true; codeBlock = ''; return; }
+      else { html += '<pre><code>' + codeBlock + '</code></pre>'; inCode = false; codeBlock = ''; return; }
+    }
+    if (inCode) { codeBlock += (codeBlock ? '\n' : '') + line; return; }
+    if (/^\|[-| ]+\|/.test(line)) return;
+    if (line.startsWith('|') && line.endsWith('|')) { flushUl(); inTable = true; tableRows.push(line.slice(1,-1)); return; }
+    if (inTable) flushTable();
+    if (line.startsWith('## ')) { flushUl(); var secId = 'sec-' + Math.random().toString(36).slice(2,8); html += '<h2 data-sec-id="'+secId+'">'+fmt(line.slice(3))+'<button class="sec-edit-btn" onclick="toggleSecEdit(\''+secId+'\',this)">修正</button></h2><div class="sec-edit-panel" id="'+secId+'"></div>'; }
+    else if (line.startsWith('### ')) { flushUl(); html += '<h3>'+fmt(line.slice(4))+'</h3>'; }
+    else if (/^[-*] /.test(line)) { if (!inUl) { html += '<ul>'; inUl = true; } html += '<li>'+fmt(line.slice(2))+'</li>'; }
+    else if (/^\d+\. /.test(line)) { if (!inUl) { html += '<ul>'; inUl = true; } html += '<li>'+fmt(line.replace(/^\d+\. /,''))+'</li>'; }
+    else if (line.startsWith('> ')) { flushUl(); html += '<blockquote>'+fmt(line.slice(2))+'</blockquote>'; }
+    else if (line.trim() === '') { flushUl(); }
+    else { flushUl(); html += '<p>'+fmt(line)+'</p>'; }
+  });
+  flushUl(); flushTable();
+  return html;
+}
+function fmt(s) {
+  return s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>').replace(/`(.+?)`/g,'<code>$1</code>');
+}
+
+// ===== API CALLS =====
+async function callGateway(provider, key, sys, user, model) {
+  const res = await fetch(API_PROXY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider: provider, model: model, key: key, apiKey: key, system: sys, user: user })
+  });
+  const raw = await res.text();
+  let data = null;
+  try { data = raw ? JSON.parse(raw) : null; } catch(e) {}
+  if (!res.ok) {
+    const msg = data && (data.error || data.message) ? (data.error || data.message) : raw;
+    throw new Error(res.status + ' ' + String(msg).slice(0, 300));
+  }
+  if (typeof data === 'string') return data;
+  if (data && typeof data.text === 'string') return data.text;
+  if (data && typeof data.content === 'string') return data.content;
+  if (data && data.choices && data.choices[0] && data.choices[0].message) return data.choices[0].message.content || '';
+  if (data && data.content && data.content[0] && data.content[0].text) return data.content.map(function(i){ return i.text || ''; }).join('');
+  if (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+    return data.candidates[0].content.parts.map(function(p){ return p.text || ''; }).join('');
+  }
+  return raw;
+}
+
+async function callGatewayAnthropic(key, sys, user, model) {
+  return callGateway('anthropic', key, sys, user, model || 'claude-sonnet-4-6');
+}
+async function callGatewayGemini(key, sys, user, model) {
+  return callGateway('gemini', key, sys, user, model || 'gemini-3.1-flash-lite-preview');
+}
+async function callGatewayRakutenAI(key, sys, user, model) {
+  return callGateway('rakuten', key, sys, user, model || 'rakutenai-3.0');
+}
+
+// ===== PREMISE PANEL =====
+function updatePremise() {
+  const mediaData = getMediaData();
+  const hasPast = mediaData.length > 0;
+  const cpaCount = mediaData.filter(function(m) { return m.cpa && Number(m.cpa) > 0; }).length;
+  const canOpt = cpaCount >= 2;
+
+  const pdEl = document.getElementById('pr-data');
+  const poEl = document.getElementById('pr-opt');
+  pdEl.textContent = hasPast ? 'あり（' + mediaData.length + '媒体）' : 'なし';
+  pdEl.className = 'premise-val ' + (hasPast ? 'ok' : 'warn');
+  poEl.textContent = canOpt ? '可能（CPA' + cpaCount + '媒体）' : '不可（CPA判明' + cpaCount + '媒体）';
+  poEl.className = 'premise-val ' + (canOpt ? 'ok' : 'warn');
+  document.getElementById('pr-ai').textContent = AI_LABELS[currentAI] || '—';
+  document.getElementById('pr-mode').textContent = MODE_LABELS[document.getElementById('outputMode').value] || '—';
+}
+
+// ===== GENERATE =====
+let isLoading = false;
+
+async function generate() {
+  if (isLoading) return; // 連打防止
+
+  const key = localStorage.getItem('mpv4key_' + currentAI) || document.getElementById('apiKey-' + currentAI).value.trim();
+  if (!key) { alert(AI_LABELS[currentAI] + ' のAPIキーを入力・保存してください'); return; }
+
+  const industry = document.getElementById('industry').value.trim();
+  const objective = document.getElementById('objective').value;
+  const budget = document.getElementById('budget').value;
+  const duration = document.getElementById('duration').value;
+  const btob = document.getElementById('btob').value;
+  const age = getAge();
+  if (!age) { alert('年齢層を1つ以上選択してください'); return; }
+  const targetDetail = document.getElementById('targetDetail').value.trim();
+  const targetCPA = document.getElementById('targetCPA').value;
+  const targetCVR = document.getElementById('targetCVR').value;
+  const targetCV = document.getElementById('targetCV').value;
+  const cvPoint = document.getElementById('cvPoint').value.trim();
+  const measureEnv = document.getElementById('measureEnv').value;
+  const dateFrom = document.getElementById('dateFrom') ? document.getElementById('dateFrom').value.trim() : '';
+  const dateTo = document.getElementById('dateTo') ? document.getElementById('dateTo').value.trim() : '';
+  const mediaData = getMediaData();
+  const constraintData = getConstraintData();
+  const wishMedia = document.getElementById('wishMedia').value.trim();
+  const constraints = document.getElementById('constraints').value.trim();
+  const freeNote = document.getElementById('freeNote').value.trim();
+  const outputMode = document.getElementById('outputMode').value;
+  const includeJSON = document.getElementById('jsonToggle').checked;
+
+  // フルモードガード：Gemini/HaikuはフルモードをサポートしないためStandardに強制変更
+  if ((currentAI === 'gemini' || currentAI === 'haiku') && outputMode === 'full') {
+    document.getElementById('outputMode').value = 'standard';
+    onModeChange();
+    alert('Gemini / Haikuではフルモードは使用できないため、標準モードに変更しました。');
+    document.getElementById('submitBtn').disabled = false;
+    return;
+  }
+
+  if (!industry || !objective || !budget || !btob) {
+    alert('必須項目（業種・目的・予算・BtoB/BtoC）を入力してください'); return;
+  }
+
+  // ===== バリデーション =====
+  // CPA 0以下チェック（エラー）
+  for (var vi = 0; vi < mediaData.length; vi++) {
+    var m = mediaData[vi];
+    if (m.cpa && Number(m.cpa) <= 0) {
+      alert('「' + m.name + '」のCPAに0以下の値は入力できません。');
+      return;
+    }
+  }
+  // 制約：最低 > 最大（エラー）
+  for (var ci = 0; ci < constraintData.length; ci++) {
+    var c = constraintData[ci];
+    if (c.min && c.max && Number(c.min) > Number(c.max)) {
+      alert('「' + c.name + '」の制約：最低%が最大%を超えています。');
+      return;
+    }
+  }
+  // 制約の合計が100%超（警告）
+  var totalMin = constraintData.reduce(function(s, c) { return s + (Number(c.min) || 0); }, 0);
+  if (totalMin > 100) {
+    if (!confirm('媒体別制約の最低%合計が' + totalMin + '%です（100%超）。続行しますか？')) return;
+  }
+  // CPA未入力媒体が多い（警告）
+  var noCpaCount = mediaData.filter(function(m) { return m.name && !m.cpa; }).length;
+  if (mediaData.length > 0 && noCpaCount > 0) {
+    if (!confirm(noCpaCount + '媒体のCPAが未入力です。最適化精度が下がります。続行しますか？')) return;
+  }
+
+  // Build strings
+  let mediaStr = '【過去実績データ】\n';
+  const hasPastData = mediaData.length > 0 ? 'あり（以下参照）' : 'なし（業界ベンチマークで補完）';
+  if (mediaData.length === 0) { mediaStr += 'なし\n'; }
+  else { mediaData.forEach(function(m) {
+    mediaStr += '- ' + m.name + '：';
+    if (m.budget) mediaStr += '月額' + Number(m.budget).toLocaleString() + '円';
+    if (m.months) mediaStr += '（' + m.months + 'ヶ月運用）';
+    if (m.cpa) mediaStr += ' / CPA¥' + Number(m.cpa).toLocaleString();
+    if (m.ctr) mediaStr += ' / CTR' + m.ctr + '%';
+    if (m.cvr) mediaStr += ' / CVR' + m.cvr + '%';
+    mediaStr += '\n';
+  }); }
+
+  let kpiStr = '\n';
+  if (targetCPA) kpiStr += '目標CPA：¥' + Number(targetCPA).toLocaleString() + '\n';
+  if (targetCVR) kpiStr += '目標CVR：' + targetCVR + '%\n';
+  if (targetCV) kpiStr += '目標CV数：' + targetCV + '/月\n';
+  if (cvPoint) kpiStr += 'CVポイント（CV定義）：' + cvPoint + '\n';
+  if (measureEnv) kpiStr += '計測環境：' + measureEnv + '\n';
+  if (kpiStr === '\n') kpiStr = '未設定\n';
+
+  // 期間：指定日付がある場合は期間文字列に追記
+  let durationStr = duration;
+  if (duration === '指定期間' && (dateFrom || dateTo)) {
+    durationStr = '指定期間（' + (dateFrom || '?') + '〜' + (dateTo || '?') + '）';
+  }
+
+  let constraintStr = '';
+  constraintData.forEach(function(c) {
+    let line = '- ' + c.name + '：';
+    if (c.min) line += '最低' + c.min + '%';
+    if (c.min && c.max) line += '、';
+    if (c.max) line += '最大' + c.max + '%';
+    constraintStr += line + '\n';
+  });
+
+  lastInput = { industry, objective, budget, duration, btob, age, targetDetail, targetCPA, targetCVR, targetCV, cvPoint, measureEnv, dateFrom, dateTo, mediaData, constraintData, wishMedia, constraints, freeNote, outputMode, includeJSON };
+
+  isLoading = true;
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('formCard').style.display = 'none';
+  document.getElementById('errMsg').classList.remove('on');
+  document.getElementById('result').classList.remove('on');
+  document.getElementById('loading').classList.add('on');
+  document.getElementById('ldTxt').textContent = AI_LABELS[currentAI] + ' [' + MODE_LABELS[outputMode] + '] で分析中...';
+
+  // Select system prompt: light for Gemini/Haiku on light/standard, full otherwise
+  const useLightSys = (currentAI === 'gemini' || currentAI === 'haiku') && outputMode !== 'full';
+  const sys = useLightSys ? SYS_LIGHT : SYS_FULL;
+
+  // Add user constraints to system if present
+  const sysWithConstraints = constraintStr
+    ? sys + '\n\n【ユーザー制約（必ず遵守）】\n' + constraintStr + '制約違反の配分は禁止。制約内でCV最大化を行うこと。'
+    : sys;
+
+  const promptData = { industry, objective, budget, duration: durationStr, btob, age, targetDetail, targetCPA, targetCVR, targetCV, mediaStr, hasPastData, wishMedia, constraints, freeNote, constraintStr, kpiStr };
+  const user = buildUserPrompt(outputMode, promptData, includeJSON);
+
+  try {
+    let text = '';
+    if (currentAI === 'claude') text = await callGatewayAnthropic(key, sysWithConstraints, user, 'claude-sonnet-4-6');
+    else if (currentAI === 'haiku') text = await callGatewayAnthropic(key, sysWithConstraints, user, 'claude-haiku-4-5-20251001');
+    else if (currentAI === 'gemini') text = await callGatewayGemini(key, sysWithConstraints, user, 'gemini-3.1-flash-lite-preview');
+    else text = await callGatewayRakutenAI(key, sysWithConstraints, user, 'rakutenai-3.0');
+
+    let jsonData = null;
+    // JSONブロックをテキストから除去してresBodyに表示（二重出力防止）
+    let displayText = text;
+    if (includeJSON) {
+      const jsonMatch = text.match(/```json\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        try { jsonData = JSON.parse(jsonMatch[1]); } catch(e) { jsonData = null; }
+        displayText = text.replace(/```json[\s\S]*?```/g, '').trim();
+      }
+    } else {
+      // JSON出力OFFでもモデルがJSONを出した場合は除去
+      displayText = text.replace(/```json[\s\S]*?```/g, '').trim();
+    }
+
+    document.getElementById('loading').classList.remove('on');
+    isLoading = false;
+    document.getElementById('aiBadge').textContent = AI_LABELS[currentAI];
+    document.getElementById('modeBadge').textContent = MODE_LABELS[outputMode];
+    document.getElementById('saveBtn').textContent = '☆ 保存';
+    document.getElementById('histMemo').value = '';
+    var renderedHtml = md2html(displayText);
+    document.getElementById('resBody').innerHTML = renderedHtml;
+    document.getElementById('result').classList.add('on');
+
+    const jsonBtn = document.getElementById('jsonToggleBtn');
+    var rawJsonStr = '';
+    if (includeJSON && jsonData) {
+      rawJsonStr = JSON.stringify(jsonData, null, 2);
+      document.getElementById('jsonOut').textContent = rawJsonStr;
+      jsonBtn.style.display = 'inline-block';
+    } else {
+      document.getElementById('jsonOut').textContent = '';
+      jsonBtn.style.display = 'none';
+    }
+
+    // スタックに追加
+    pushToStack({
+      id: Date.now(),
+      html: renderedHtml,
+      memo: '',
+      ai: AI_LABELS[currentAI],
+      mode: MODE_LABELS[outputMode],
+      rawJson: rawJsonStr,
+      formData: lastInput
+    });
+
+    // AdCPセクションを表示
+    document.getElementById('adcpSection').style.display = 'block';
+    document.getElementById('adcpSimSection').style.display = 'block';
+    document.getElementById('adcpOutput').style.display = 'none';
+    document.getElementById('copyAdcpBtn').style.display = 'none';
+    document.getElementById('adcpProposals').innerHTML = '';
+    document.getElementById('adcpAllocation').style.display = 'none';
+
+  } catch (err) {
+    console.error('[generate] error:', err);
+    document.getElementById('loading').classList.remove('on');
+    document.getElementById('formCard').style.display = 'block';
+    isLoading = false;
+    document.getElementById('submitBtn').disabled = false;
+    const errEl = document.getElementById('errMsg');
+    const errMsg = err.message || '';
+    if (errMsg.startsWith('429')) {
+      errEl.textContent = '⚠️ レート制限（429）：' + errMsg + '。しばらく時間をおいてから再試行してください。';
+    } else {
+      errEl.textContent = 'エラーが発生しました（' + errMsg + '）。APIキーを確認するか、しばらくしてからお試しください。';
+    }
+    errEl.classList.add('on');
+  }
+}
+
+function resetForm() {
+  document.getElementById('result').classList.remove('on');
+  document.getElementById('formCard').style.display = 'block';
+  document.getElementById('submitBtn').disabled = false;
+  isLoading = false;
+  // AdCPリセット
+  _adcpBrief = null;
+  _lastAllocatorResult = null;
+  document.getElementById('adcpSection').style.display = 'none';
+  document.getElementById('adcpSimSection').style.display = 'none';
+  document.getElementById('adcpOutput').style.display = 'none';
+  document.getElementById('copyAdcpBtn').style.display = 'none';
+  document.getElementById('dlAdcpJsonBtn').style.display = 'none';
+  document.getElementById('dlAdcpHtmlBtn').style.display = 'none';
+  document.getElementById('dlAdcpPdfBtn').style.display = 'none';
+  document.getElementById('adcpProposals').innerHTML = '';
+  document.getElementById('adcpAllocation').style.display = 'none';
+  document.getElementById('dlSimHtmlBtn').style.display = 'none';
+  document.getElementById('dlSimPdfBtn').style.display = 'none';
+}
+
+// フォームを完全クリアして新規分析を開始
+function startNewAnalysis() {
+  resetForm();
+  // テキスト・数値フィールドをクリア
+  ['industry','targetDetail','targetCPA','targetCVR','targetCV','wishMedia','constraints','freeNote','cvPoint','dateFrom','dateTo'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  // selectを初期値に
+  ['objective','budget','duration','btob','outputMode','measureEnv'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.selectedIndex = 0;
+  });
+  var dra = document.getElementById('dateRangeArea');
+  if (dra) dra.style.display = 'none';
+  // 年齢チェックボックスをクリア
+  document.querySelectorAll('#ageChecks input').forEach(function(cb) {
+    cb.checked = false;
+    var lbl = cb.closest('.age-chk');
+    if (lbl) lbl.classList.remove('checked');
+  });
+  // 過去実績をリセット
+  document.getElementById('mediaRows').innerHTML = '';
+  rowId = 0;
+  addMediaRow();
+  // 媒体別制約をリセット
+  var cr = document.getElementById('constraintRows');
+  if (cr) cr.innerHTML = '';
+  // インポートテキストエリアをクリア
+  var ia = document.getElementById('importTextArea');
+  if (ia) ia.value = '';
+  // メモクリア
+  var memo = document.getElementById('histMemo');
+  if (memo) memo.value = '';
+  // 前提パネル・モード更新
+  onModeChange();
+  updatePremise();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function toggleJSON() { document.getElementById('jsonPanel').classList.toggle('on'); }
+
+// ===== ANALYSIS STACK (max 5) =====
+var _analysisStack = [];   // [{id, label, html, memo, ai, mode, rawJson, formData}]
+var _activeStackIdx = -1;
+
+function _stackLabel(entry) {
+  if (entry.label) return entry.label.length > 14 ? entry.label.slice(0, 13) + '…' : entry.label;
+  var base = (entry.formData && entry.formData.industry) ? entry.formData.industry : '分析';
+  return base.length > 14 ? base.slice(0, 13) + '…' : base;
+}
+
+function pushToStack(entry) {
+  // 同一セッション内で最大5件。先頭に追加し古いものを捨てる
+  _analysisStack.unshift(entry);
+  if (_analysisStack.length > 5) _analysisStack.length = 5;
+  _activeStackIdx = 0;
+  renderStackTabs();
+}
+
+function renderStackTabs() {
+  var bar = document.getElementById('stackBar');
+  var tabs = document.getElementById('stackTabs');
+  if (!bar || !tabs) return;
+  if (_analysisStack.length < 1) { bar.classList.remove('on'); return; }
+  bar.classList.add('on');
+  tabs.innerHTML = _analysisStack.map(function(e, i) {
+    var active = i === _activeStackIdx ? ' active' : '';
+    return '<button class="stack-tab' + active + '" onclick="switchStack(' + i + ')">' +
+      '<span class="stk-idx">' + (i + 1) + '</span>' +
+      _stackLabel(e) +
+      '<span class="stk-close" onclick="event.stopPropagation();removeStack(' + i + ')">×</span>' +
+    '</button>';
+  }).join('');
+}
+
+function switchStack(idx) {
+  if (idx < 0 || idx >= _analysisStack.length) return;
+  _activeStackIdx = idx;
+  var e = _analysisStack[idx];
+  document.getElementById('resBody').innerHTML = e.html;
+  document.getElementById('aiBadge').textContent = e.ai || '';
+  document.getElementById('modeBadge').textContent = e.mode || '';
+  document.getElementById('histMemo').value = e.memo || '';
+  var jsonOut = document.getElementById('jsonOut');
+  var jsonBtn = document.getElementById('jsonToggleBtn');
+  if (e.rawJson) {
+    jsonOut.textContent = e.rawJson;
+    jsonBtn.style.display = 'inline-block';
+  } else {
+    jsonOut.textContent = '';
+    jsonBtn.style.display = 'none';
+  }
+  document.getElementById('jsonPanel').classList.remove('on');
+  renderStackTabs();
+}
+
+function removeStack(idx) {
+  _analysisStack.splice(idx, 1);
+  if (_analysisStack.length === 0) {
+    _activeStackIdx = -1;
+    document.getElementById('result').classList.remove('on');
+    document.getElementById('formCard').style.display = 'block';
+    document.getElementById('submitBtn').disabled = false;
+  } else {
+    _activeStackIdx = Math.min(idx, _analysisStack.length - 1);
+    switchStack(_activeStackIdx);
+  }
+  renderStackTabs();
+}
+
+// ===== REPORT JSON DOWNLOAD / IMPORT =====
+function buildReportJson() {
+  var html = document.getElementById('resBody').innerHTML || '';
+  var rawJson = document.getElementById('jsonOut').textContent || '';
+  var ai = document.getElementById('aiBadge').textContent || '';
+  var mode = document.getElementById('modeBadge').textContent || '';
+  var memo = document.getElementById('histMemo').value.trim();
+  var entry = _analysisStack[_activeStackIdx];
+  return {
+    _type: 'media_planner_report',
+    _version: '5.13',
+    generated_at: new Date().toISOString(),
+    ai: ai,
+    mode: mode,
+    memo: memo,
+    html: html,
+    structured_json: rawJson ? JSON.parse(rawJson) : null,
+    formData: entry ? entry.formData : (lastInput || null)
+  };
+}
+
+function downloadReportJSON() {
+  var obj;
+  try { obj = buildReportJson(); } catch(e) { alert('JSONの生成に失敗しました: ' + e.message); return; }
+  var str = JSON.stringify(obj, null, 2);
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([str], { type: 'application/json;charset=utf-8' }));
+  a.download = 'media-report-' + Date.now() + '.json';
+  a.click();
+}
+
+function toggleJsonImport() {
+  var area = document.getElementById('jsonImportArea');
+  if (area) area.classList.toggle('on');
+}
+
+function _applyReportJson(obj) {
+  if (!obj || obj._type !== 'media_planner_report') { alert('形式が合いません。メディアプランナーのReport JSONを読み込んでください。'); return; }
+  var html = obj.html || '';
+  var ai = obj.ai || '—';
+  var mode = obj.mode || '—';
+  var memo = obj.memo || '';
+  var rawJson = obj.structured_json ? JSON.stringify(obj.structured_json, null, 2) : '';
+
+  var entry = {
+    id: Date.now(),
+    label: obj.memo || ai,
+    html: html,
+    memo: memo,
+    ai: ai,
+    mode: mode,
+    rawJson: rawJson,
+    formData: obj.formData || null
+  };
+  pushToStack(entry);
+
+  document.getElementById('resBody').innerHTML = html;
+  document.getElementById('aiBadge').textContent = ai;
+  document.getElementById('modeBadge').textContent = mode;
+  document.getElementById('histMemo').value = memo;
+  var jsonOut = document.getElementById('jsonOut');
+  var jsonBtn = document.getElementById('jsonToggleBtn');
+  if (rawJson) {
+    jsonOut.textContent = rawJson;
+    jsonBtn.style.display = 'inline-block';
+  } else {
+    jsonOut.textContent = '';
+    jsonBtn.style.display = 'none';
+  }
+  document.getElementById('jsonPanel').classList.remove('on');
+  document.getElementById('result').classList.add('on');
+  document.getElementById('formCard').style.display = 'none';
+  document.getElementById('jsonImportText').value = '';
+  var jst = document.getElementById('importJsonStatus');
+  if (jst) { jst.textContent = '✓ 読み込みました'; jst.className = 'import-status ok'; }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function loadReportFromJson() {
+  var text = document.getElementById('jsonImportText').value.trim();
+  var stEl = document.getElementById('importJsonStatus');
+  if (!text) { if (stEl) { stEl.textContent = 'JSONを入力してください'; stEl.className = 'import-status err'; } return; }
+  var obj;
+  try { obj = JSON.parse(text); } catch(e) {
+    if (stEl) { stEl.textContent = 'パースエラー: ' + e.message.slice(0,60); stEl.className = 'import-status err'; }
+    return;
+  }
+  _applyReportJson(obj);
+}
+
+function loadReportFromFile(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var obj;
+    try { obj = JSON.parse(e.target.result); } catch(err) { alert('ファイルの読み込みに失敗しました: ' + err.message); return; }
+    _applyReportJson(obj);
+  };
+  reader.readAsText(file, 'UTF-8');
+  event.target.value = '';
+}
+
+// ===== HISTORY =====
+function saveToHistory() {
+  const memo = document.getElementById('histMemo').value.trim();
+  const entry = {
+    id: Date.now(),
+    date: new Date().toLocaleDateString('ja-JP'),
+    ai: AI_LABELS[currentAI],
+    aiKey: currentAI,
+    mode: MODE_LABELS[lastInput.outputMode || 'standard'],
+    industry: lastInput.industry,
+    objective: lastInput.objective,
+    budget: lastInput.budget,
+    memo: memo,
+    html: document.getElementById('resBody').innerHTML,
+    json: document.getElementById('jsonOut').textContent,
+    // フォーム復元用に全入力データを保存
+    formData: {
+      industry: lastInput.industry,
+      objective: lastInput.objective,
+      budget: lastInput.budget,
+      duration: lastInput.duration,
+      btob: lastInput.btob,
+      age: lastInput.age,
+      targetDetail: lastInput.targetDetail,
+      targetCPA: lastInput.targetCPA,
+      targetCVR: lastInput.targetCVR,
+      targetCV: lastInput.targetCV,
+      mediaData: lastInput.mediaData,
+      constraintData: lastInput.constraintData,
+      wishMedia: lastInput.wishMedia,
+      constraints: lastInput.constraints,
+      freeNote: lastInput.freeNote,
+      outputMode: lastInput.outputMode,
+      includeJSON: lastInput.includeJSON
+    }
+  };
+  const history = JSON.parse(localStorage.getItem('mpv4_history') || '[]');
+  history.unshift(entry);
+  localStorage.setItem('mpv4_history', JSON.stringify(history.slice(0, 20)));
+  document.getElementById('saveBtn').textContent = '✓ 保存済';
+  renderHistory();
+}
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem('mpv4_history') || '[]');
+  const section = document.getElementById('histSection');
+  if (!history.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  document.getElementById('histList').innerHTML = history.map(function(e) {
+    const hasForm = !!e.formData;
+    return '<div class="hist-item">' +
+      '<div class="hist-meta"><div class="hist-title">' + (e.industry||'—') + ' / ' + (e.objective||'—') + '</div>' +
+      '<div class="hist-date">' + e.date + ' · ' + e.ai + ' · ' + (e.mode||'—') + '</div></div>' +
+      '<div class="hist-sub">' + (e.budget||'') + (e.memo ? ' — ' + e.memo : '') + '</div>' +
+      '<div class="hist-acts">' +
+        '<button class="ghost-btn" onclick="loadHistory('+e.id+')">表示</button>' +
+        (hasForm ? '<button class="ghost-btn hist-reanalyze" onclick="restoreAndEdit('+e.id+')">← 再入力</button>' : '') +
+        (hasForm ? '<button class="ghost-btn hist-reanalyze" onclick="restoreAndRun('+e.id+')">▶ 再分析</button>' : '') +
+        '<button class="ghost-btn" onclick="dlHistory('+e.id+')">↓ HTML</button>' +
+        '<button class="ghost-btn" onclick="delHistory('+e.id+')">削除</button>' +
+      '</div></div>';
+  }).join('');
+}
+function loadHistory(id) {
+  const e = JSON.parse(localStorage.getItem('mpv4_history') || '[]').find(function(x) { return x.id === id; });
+  if (!e) return;
+  document.getElementById('resBody').innerHTML = e.html;
+  document.getElementById('jsonOut').textContent = e.json || '';
+  document.getElementById('aiBadge').textContent = e.ai;
+  document.getElementById('modeBadge').textContent = e.mode || '';
+  document.getElementById('saveBtn').textContent = '✓ 保存済';
+  const jsonBtn = document.getElementById('jsonToggleBtn');
+  jsonBtn.style.display = e.json ? 'inline-block' : 'none';
+  document.getElementById('formCard').style.display = 'none';
+  document.getElementById('result').classList.add('on');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// フォームデータを復元する共通関数
+function restoreFormData(formData) {
+  if (!formData) return;
+
+  // 基本フィールド
+  const setVal = function(id, val) {
+    const el = document.getElementById(id);
+    if (el && val !== undefined && val !== null) el.value = val;
+  };
+  setVal('industry', formData.industry);
+  setVal('objective', formData.objective);
+  setVal('budget', formData.budget);
+  setVal('duration', formData.duration);
+  setVal('btob', formData.btob);
+  setVal('targetDetail', formData.targetDetail);
+  setVal('targetCPA', formData.targetCPA);
+  setVal('targetCVR', formData.targetCVR);
+  setVal('targetCV', formData.targetCV);
+  setVal('wishMedia', formData.wishMedia);
+  setVal('constraints', formData.constraints);
+  setVal('freeNote', formData.freeNote);
+  setVal('outputMode', formData.outputMode);
+
+  // JSON出力トグル
+  const jsonChk = document.getElementById('jsonToggle');
+  if (jsonChk && formData.includeJSON !== undefined) jsonChk.checked = formData.includeJSON;
+
+  // 年齢チェックボックス復元
+  const savedAge = formData.age || '';
+  document.querySelectorAll('#ageChecks input').forEach(function(cb) {
+    cb.checked = false;
+    cb.closest('.age-chk').classList.remove('checked');
+  });
+  if (savedAge) {
+    const ages = savedAge.split(/[・,、]+/).map(function(s) { return s.trim(); });
+    document.querySelectorAll('#ageChecks input').forEach(function(cb) {
+      if (ages.indexOf(cb.value) !== -1) {
+        cb.checked = true;
+        cb.closest('.age-chk').classList.add('checked');
+      }
+    });
+  }
+
+  // 過去実績データ復元
+  document.getElementById('mediaRows').innerHTML = '';
+  rowId = 0;
+  if (formData.mediaData && formData.mediaData.length) {
+    formData.mediaData.forEach(function(m) { addMediaRow(m); });
+  } else {
+    addMediaRow();
+  }
+
+  // 媒体別制約復元
+  const constraintRows = document.getElementById('constraintRows');
+  if (constraintRows) {
+    constraintRows.innerHTML = '';
+    if (formData.constraintData && formData.constraintData.length) {
+      formData.constraintData.forEach(function(c) { addConstraintRow(c); });
+    }
+  }
+
+  // モード・前提パネル更新
+  onModeChange();
+  updatePremise();
+}
+
+// 「← 再入力」: フォームを復元してフォーム画面に戻る
+function restoreAndEdit(id) {
+  const e = JSON.parse(localStorage.getItem('mpv4_history') || '[]').find(function(x) { return x.id === id; });
+  if (!e || !e.formData) return;
+  // 結果画面を閉じてフォームへ
+  document.getElementById('result').classList.remove('on');
+  document.getElementById('formCard').style.display = 'block';
+  document.getElementById('submitBtn').disabled = false;
+  isLoading = false;
+  restoreFormData(e.formData);
+  // AI設定も復元
+  if (e.aiKey) selectAI(e.aiKey);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// 「▶ 再分析」: フォームを復元してそのまま分析実行
+function restoreAndRun(id) {
+  const e = JSON.parse(localStorage.getItem('mpv4_history') || '[]').find(function(x) { return x.id === id; });
+  if (!e || !e.formData) return;
+  // フォームを復元
+  document.getElementById('result').classList.remove('on');
+  document.getElementById('formCard').style.display = 'block';
+  document.getElementById('submitBtn').disabled = false;
+  isLoading = false;
+  restoreFormData(e.formData);
+  if (e.aiKey) selectAI(e.aiKey);
+  // 少し待ってから分析実行（DOM更新後）
+  setTimeout(function() { generate(); }, 100);
+}
+function delHistory(id) {
+  const h = JSON.parse(localStorage.getItem('mpv4_history') || '[]').filter(function(x) { return x.id !== id; });
+  localStorage.setItem('mpv4_history', JSON.stringify(h));
+  renderHistory();
+}
+function clearHistory() {
+  if (!confirm('保存済みプランをすべて削除しますか？')) return;
+  localStorage.removeItem('mpv4_history');
+  renderHistory();
+}
+
+// ===== Ad Strategy Decision Simulator Core =====
+// This block is currently embedded in Media Planner v5.x.
+// It is designed to be separated into an independent product later.
+//
+// Layer Definition:
+// WHAT: Strategy intent and decision logic
+// WHERE: Channel / Seller Agent
+// HOW: Execution engine and automation level
+// QUALITY: Confidence, data quality, and decision tension
+// CONSTRAINT: User-defined media limits
+// TRANSFER: Planner interface JSON
+//
+// Principle:
+// Intent drives direction.
+// Context refines judgment.
+// Data increases confidence.
+// Constraints override optimization when required.
+// Human makes the final decision.
+//
+// v5.9 marks the final logic-solidification version before product separation.
+// Next phase: separate Ad Strategy Decision Simulator from Media Planner UI.
+//
+// Seller Agents propose.
+// Allocator Agent decides.
+// Human approves.
+//
+// Strategy Transfer JSON is the bridge from Simulator to Planner.
+// Simulator decides direction. Planner operationalizes it.
+
+var _adcpBrief = null;
+
+// helpers
+function adcpParseBudget(s) {
+  if (!s) return 1000000;
+  if (/> 10,000,000|1,000万以上/.test(s)) return 15000000;
+  if (/5,000,000.*10,000,000|500〜1,000万/.test(s)) return 7500000;
+  if (/2,000,000.*5,000,000|200〜500万/.test(s)) return 3500000;
+  if (/500,000.*2,000,000|50〜200万/.test(s)) return 1250000;
+  return 400000;
+}
+function adcpFmt(n) { return n.toLocaleString('ja-JP'); }
+
+// ① generateAdcpBrief — フォーム値をAdCP互換JSONに変換（v4.4強化版）
+// Intent Strength Layer
+// Data quality measures evidence.
+// Intent strength measures decision readiness.
+// No past data should not automatically mean test_learning.
+
+function calculateIntentStrength(text) {
+  var t = (text || '').toLowerCase();
+
+  // Part4⑩: 学習系シグナルをstrong追加
+  var strongSignals = ['比較','検討','予約','購入','申込','申し込み','乗り換え','見直し','資料請求','問い合わせ','契約','cv','cpa','roas','conversion','purchase','booking','lead','apply','不安','初心者','リスク','学習','情報収集'];
+  // Part4⑪: ブランドをweak（すでに含まれているが明示）
+  var weakSignals   = ['認知','ブランド','知ってもらう','リーチ','話題化','バズ','興味喚起','awareness','reach','brand','viral'];
+
+  var strongMatches = strongSignals.filter(function(s) { return t.indexOf(s) !== -1; });
+  var weakMatches   = weakSignals.filter(function(s)   { return t.indexOf(s) !== -1; });
+
+  var intentScore = 50;
+  intentScore += strongMatches.length * 12;
+  intentScore -= weakMatches.length  * 8;
+  intentScore = Math.max(0, Math.min(100, intentScore));
+
+  var intentStrength = 'medium';
+  if (intentScore >= 70) intentStrength = 'high';
+  if (intentScore <= 40) intentStrength = 'low';
+
+  return {
+    intent_strength: intentStrength,
+    intent_score: intentScore,
+    intent_signals: strongMatches.concat(weakMatches)
+  };
+}
+
+// Part1②③: Intent Type推定関数（意思の意味を分類する）
+function inferIntentType(brief) {
+  var text = ((brief.target_audience && brief.target_audience.description) || '') + ' ' +
+             (brief.campaign_brief || '') + ' ' +
+             ((brief.governance_notes && brief.governance_notes.notes) || '');
+  text = text.toLowerCase();
+  var signals = brief.intent_signals || [];
+
+  var intentType = 'conversion_like'; // default
+
+  // learning（最優先）- 不安/学習系は理解が先
+  if (/不安|初心者|わからない|リスク|学習|情報収集/.test(text)) {
+    intentType = 'learning';
+  }
+  // comparison - 比較検討段階
+  else if (signals.indexOf('比較') !== -1 || /比較/.test(text)) {
+    intentType = 'comparison';
+  }
+  // transaction - 強いCV意思
+  else if (signals.indexOf('申込') !== -1 || signals.indexOf('契約') !== -1 || /申し込み|契約|購入/.test(text)) {
+    intentType = 'transaction';
+  }
+  // impulse - お得・キャンペーン訴求
+  else if (/お得|キャンペーン|限定|ポイント/.test(text)) {
+    intentType = 'impulse';
+  }
+
+  return intentType;
+}
+
+function generateAdcpBrief() {
+  try {
+    var industry     = document.getElementById('industry').value.trim() || '未入力';
+    var objective    = document.getElementById('objective').value || '未選択';
+    var budget       = document.getElementById('budget').value || '未選択';
+    var duration     = document.getElementById('duration').value || '未選択';
+    var btob         = document.getElementById('btob').value || '未選択';
+    var age = (function() {
+      var arr = [];
+      document.querySelectorAll('#ageChecks input:checked').forEach(function(cb) { arr.push(cb.value); });
+      return arr.join(', ') || '未選択';
+    })();
+    var targetDetail = document.getElementById('targetDetail').value.trim();
+    var targetCPA    = document.getElementById('targetCPA').value;
+    var targetCVR    = document.getElementById('targetCVR').value;
+    var targetCV     = document.getElementById('targetCV').value;
+    var wishMedia    = document.getElementById('wishMedia').value.trim();
+    var constraints  = document.getElementById('constraints').value.trim();
+    var freeNote     = document.getElementById('freeNote').value.trim();
+    var mediaData    = typeof getMediaData === 'function' ? getMediaData() : [];
+    var preferredChannels = mediaData.map(function(m) { return m.name; }).filter(Boolean);
+    var wishList     = wishMedia ? wishMedia.split(/[、,，\s]+/).filter(Boolean) : [];
+
+    var kpiList = [];
+    if (targetCPA) kpiList.push({ metric: 'CPA',   target: targetCPA + '円' });
+    if (targetCVR) kpiList.push({ metric: 'CVR',   target: targetCVR + '%' });
+    if (targetCV)  kpiList.push({ metric: 'CV/月', target: targetCV + '件' });
+
+    var objMap = {
+      '認知拡大': 'Brand Awareness / Reach', 'リード獲得': 'Lead Generation',
+      'アプリDL': 'App Install', 'EC購買': 'EC Purchase / Conversion',
+      '来店促進': 'Store Visit', '採用': 'Recruitment', 'その他': 'Other'
+    };
+    var budgetMap = {
+      '〜50万円': '< 500,000', '50〜200万円': '500,000 - 2,000,000',
+      '200〜500万円': '2,000,000 - 5,000,000', '500〜1,000万円': '5,000,000 - 10,000,000',
+      '1,000万円以上': '> 10,000,000'
+    };
+
+    // クリエイティブフォーマットを媒体名から推定
+    var channelHints = preferredChannels.concat(wishList);
+    var formats = [];
+    if (channelHints.some(function(c) { return /TikTok|tiktok/i.test(c); })) formats.push('short_video');
+    if (channelHints.some(function(c) { return /YouTube|動画/i.test(c); })) formats.push('video_15s', 'video_30s');
+    if (channelHints.some(function(c) { return /Meta|Facebook|Instagram/i.test(c); })) formats.push('image_1200x628', 'carousel');
+    if (channelHints.some(function(c) { return /Google|検索/i.test(c); })) formats.push('text_ad');
+    if (formats.length === 0) formats.push('image', 'video');
+
+    // Simulator principle:
+    // Intent drives direction
+    // Context refines judgment
+    // Data increases confidence
+    // Constraints override optimization when required
+
+    // Input Completeness判定
+    var hasIntent   = objective && objective !== '未選択';
+    var hasAudience = age && age !== '未選択';
+    var hasBudget   = budget && budget !== '未選択';
+    var hasKpi      = kpiList.length > 0;
+    var hasPast     = mediaData.length > 0;
+
+    var completeness = 0;
+    if (hasIntent)   completeness += 30;
+    if (hasAudience) completeness += 20;
+    if (hasBudget)   completeness += 20;
+    if (hasKpi)      completeness += 15;
+    if (hasPast)     completeness += 15;
+
+    var inputMode = 'minimum_intent';
+    if (completeness >= 70) inputMode = 'informed_decision';
+    if (completeness >= 90) inputMode = 'data_supported';
+
+    var decisionBasis =
+      inputMode === 'minimum_intent'
+        ? 'Hypothesis-driven decision based on intent, audience, and budget.'
+        : inputMode === 'informed_decision'
+        ? 'Decision supported by context and partial data.'
+        : 'Decision supported by past performance data.';
+
+    // 媒体別制約の取得
+    var mediaConstraints = typeof getConstraintData === 'function'
+      ? getConstraintData().map(function(c) {
+          return {
+            channel: c.name,
+            min_percent: c.min ? Number(c.min) : null,
+            max_percent: c.max ? Number(c.max) : null
+          };
+        })
+      : [];
+
+    // Intent Strength算出
+    var intentText = [objective, targetDetail, freeNote, constraints, wishMedia].join(' ');
+    var intentResult = calculateIntentStrength(intentText);
+
+    var brief = {
+      adcp_version: 'draft',
+      buying_mode: 'brief',
+      generated_at: new Date().toISOString(),
+      input_mode: inputMode,
+      input_completeness: completeness,
+      decision_basis: decisionBasis,
+      intent_strength: intentResult.intent_strength,
+      intent_score: intentResult.intent_score,
+      intent_signals: intentResult.intent_signals,
+      intent_type: '', // inferIntentType後に上書き
+      campaign_brief: industry + 'における' + objective + 'キャンペーン。予算' + budget + '、期間' + duration + '、ターゲット' + age + '。',
+      brand: { name: industry, domain: '', btob_btoc: btob },
+      objective: objMap[objective] || objective,
+      target_audience: {
+        description: targetDetail || age,
+        age_range: age,
+        location: 'Japan',
+        interests: wishList
+      },
+      budget_constraints: {
+        total_budget: budgetMap[budget] || budget,
+        currency: 'JPY',
+        flight_dates: duration,
+        period_label: duration
+      },
+      preferred_channels: preferredChannels.concat(wishList),
+      excluded_channels: [],
+      kpi: kpiList,
+      media_constraints: mediaConstraints,
+      creative_requirements: {
+        formats: formats,
+        tone: btob === 'BtoB' ? 'professional' : 'engaging',
+        must_include: [],
+        avoid: constraints ? [constraints] : []
+      },
+      governance_notes: {
+        brand_safety: true,
+        privacy_sensitive: true,
+        human_approval_required: true,
+        notes: freeNote || ''
+      },
+      past_performance_summary: mediaData.map(function(m) {
+        return {
+          channel: m.name,
+          monthly_budget_jpy: m.budget || null,
+          months_running: m.months || null,
+          cpa_jpy: m.cpa || null,
+          ctr_pct: m.ctr || null,
+          cvr_pct: m.cvr || null
+        };
+      }),
+      media_buy_request_draft: {
+        status: 'draft',
+        ready_for_adcp_api: false,
+        // FUTURE EXTENSION POINT ①: AdCP API接続
+        //   POST https://[seller-agent-endpoint]/mcp
+        //   method: tools/call → name: "create_media_buy"
+        //   Authorization: Bearer [ADCP_TOKEN]
+        // FUTURE EXTENSION POINT ②: Seller Agent API連携
+        //   get_products レスポンスを preferred_channels にグラウンディング
+        // FUTURE EXTENSION POINT ③: リアル在庫取得
+        //   AdCP get_products の返り値でモックデータを置換
+        // FUTURE EXTENSION POINT ④: 自動発注
+        //   status: "pending_approval" → human_approval後 → "ordered"
+        // FUTURE EXTENSION POINT ⑤: クリエイティブ生成連携
+        // FUTURE EXTENSION POINT ⑥: 楽天データ連携
+        notes: 'This is a planning-stage AdCP-compatible brief. API connection is not implemented yet.'
+      }
+    };
+
+    _adcpBrief = brief;
+    // intent_typeはbrief全体を参照して推定（brief構築後）
+    brief.intent_type = inferIntentType(brief);
+    document.getElementById('adcpJson').textContent = JSON.stringify(brief, null, 2);
+    document.getElementById('adcpOutput').style.display = 'block';
+    document.getElementById('copyAdcpBtn').style.display = 'inline-block';
+    document.getElementById('dlAdcpJsonBtn').style.display = 'inline-block';
+    document.getElementById('dlAdcpHtmlBtn').style.display = 'inline-block';
+    document.getElementById('dlAdcpPdfBtn').style.display = 'inline-block';
+    return brief;
+  } catch(e) {
+    console.error('[AdCP] generateAdcpBrief error:', e);
+    return null;
+  }
+}
+
+// Simulator内部用：UIを更新せずbriefだけを生成して返す
+// simulateAdcpProposals()から呼ばれる（adcpSectionの表示状態を変えない）
+function _buildBriefOnly() {
+  try {
+    var industry     = document.getElementById('industry').value.trim() || '未入力';
+    var objective    = document.getElementById('objective').value || '未選択';
+    var budget       = document.getElementById('budget').value || '未選択';
+    var duration     = document.getElementById('duration').value || '未選択';
+    var btob         = document.getElementById('btob').value || '未選択';
+    var age = (function() {
+      var arr = [];
+      document.querySelectorAll('#ageChecks input:checked').forEach(function(cb) { arr.push(cb.value); });
+      return arr.join(', ') || '未選択';
+    })();
+    var targetDetail = document.getElementById('targetDetail').value.trim();
+    var targetCPA    = document.getElementById('targetCPA').value;
+    var targetCVR    = document.getElementById('targetCVR').value;
+    var targetCV     = document.getElementById('targetCV').value;
+    var wishMedia    = document.getElementById('wishMedia').value.trim();
+    var constraints  = document.getElementById('constraints').value.trim();
+    var freeNote     = document.getElementById('freeNote').value.trim();
+    var mediaData    = typeof getMediaData === 'function' ? getMediaData() : [];
+    var preferredChannels = mediaData.map(function(m) { return m.name; }).filter(Boolean);
+    var wishList     = wishMedia ? wishMedia.split(/[、,，\s]+/).filter(Boolean) : [];
+
+    var kpiList = [];
+    if (targetCPA) kpiList.push({ metric: 'CPA',   target: targetCPA + '円' });
+    if (targetCVR) kpiList.push({ metric: 'CVR',   target: targetCVR + '%' });
+    if (targetCV)  kpiList.push({ metric: 'CV/月', target: targetCV + '件' });
+
+    var objMap = {
+      '認知拡大': 'Brand Awareness / Reach', 'リード獲得': 'Lead Generation',
+      'アプリDL': 'App Install', 'EC購買': 'EC Purchase / Conversion',
+      '来店促進': 'Store Visit', '採用': 'Recruitment', 'その他': 'Other'
+    };
+    var budgetMap = {
+      '〜50万円': '< 500,000', '50〜200万円': '500,000 - 2,000,000',
+      '200〜500万円': '2,000,000 - 5,000,000', '500〜1,000万円': '5,000,000 - 10,000,000',
+      '1,000万円以上': '> 10,000,000'
+    };
+
+    var channelHints = preferredChannels.concat(wishList);
+    var formats = [];
+    if (channelHints.some(function(c) { return /TikTok|tiktok/i.test(c); })) formats.push('short_video');
+    if (channelHints.some(function(c) { return /YouTube|動画/i.test(c); })) formats.push('video_15s', 'video_30s');
+    if (channelHints.some(function(c) { return /Meta|Facebook|Instagram/i.test(c); })) formats.push('image_1200x628', 'carousel');
+    if (channelHints.some(function(c) { return /Google|検索/i.test(c); })) formats.push('text_ad');
+    if (formats.length === 0) formats.push('image', 'video');
+
+    var hasIntent   = objective && objective !== '未選択';
+    var hasAudience = age && age !== '未選択';
+    var hasBudget   = budget && budget !== '未選択';
+    var hasKpi      = kpiList.length > 0;
+    var hasPast     = mediaData.length > 0;
+    var completeness = 0;
+    if (hasIntent)   completeness += 30;
+    if (hasAudience) completeness += 20;
+    if (hasBudget)   completeness += 20;
+    if (hasKpi)      completeness += 15;
+    if (hasPast)     completeness += 15;
+    var inputMode = completeness >= 90 ? 'data_supported' : completeness >= 70 ? 'informed_decision' : 'minimum_intent';
+    var decisionBasis = inputMode === 'minimum_intent'
+      ? 'Hypothesis-driven decision based on intent, audience, and budget.'
+      : inputMode === 'informed_decision'
+      ? 'Decision supported by context and partial data.'
+      : 'Decision supported by past performance data.';
+
+    var mediaConstraints = typeof getConstraintData === 'function'
+      ? getConstraintData().map(function(c) { return { channel: c.name, min_percent: c.min ? Number(c.min) : null, max_percent: c.max ? Number(c.max) : null }; })
+      : [];
+
+    var intentText = [objective, targetDetail, freeNote, constraints, wishMedia].join(' ');
+    var intentResult = calculateIntentStrength(intentText);
+
+    var brief = {
+      adcp_version: 'draft', buying_mode: 'brief',
+      generated_at: new Date().toISOString(),
+      input_mode: inputMode, input_completeness: completeness, decision_basis: decisionBasis,
+      intent_strength: intentResult.intent_strength,
+      intent_score: intentResult.intent_score,
+      intent_signals: intentResult.intent_signals,
+      intent_type: '', // inferIntentType後に上書き
+      campaign_brief: industry + 'における' + (objMap[objective] || objective) + 'キャンペーン。予算' + budget + '、期間' + duration + '、ターゲット' + age + '。',
+      brand: { name: industry, domain: '', btob_btoc: btob },
+      objective: objMap[objective] || objective,
+      target_audience: { description: targetDetail || age, age_range: age, location: 'Japan', interests: wishList },
+      budget_constraints: { total_budget: budgetMap[budget] || budget, currency: 'JPY', flight_dates: duration, period_label: duration },
+      preferred_channels: preferredChannels.concat(wishList),
+      excluded_channels: [],
+      kpi: kpiList,
+      media_constraints: mediaConstraints,
+      creative_requirements: { formats: formats, tone: btob === 'BtoB' ? 'professional' : 'engaging', must_include: [], avoid: constraints ? [constraints] : [] },
+      governance_notes: { brand_safety: true, privacy_sensitive: true, human_approval_required: true, notes: freeNote || '' },
+      past_performance_summary: mediaData.map(function(m) { return { channel: m.name, monthly_budget_jpy: m.budget || null, months_running: m.months || null, cpa_jpy: m.cpa || null, ctr_pct: m.ctr || null, cvr_pct: m.cvr || null }; }),
+      media_buy_request_draft: { status: 'draft', ready_for_adcp_api: false, notes: 'This is a planning-stage AdCP-compatible brief. API connection is not implemented yet.' }
+    };
+    _adcpBrief = brief;
+    brief.intent_type = inferIntentType(brief);
+    return brief;
+  } catch(e) {
+    console.error('[_buildBriefOnly] error:', e);
+    return null;
+  }
+}
+
+function copyAdcpJson() {
+  if (!_adcpBrief) return;
+  try {
+    navigator.clipboard.writeText(JSON.stringify(_adcpBrief, null, 2));
+    var btn = document.getElementById('copyAdcpBtn');
+    var orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    setTimeout(function() { btn.textContent = orig; }, 2000);
+  } catch(e) { console.error('[AdCP] copy error:', e); }
+}
+
+function downloadAdcpJson() {
+  if (!_adcpBrief) return;
+  var json = JSON.stringify(_adcpBrief, null, 2);
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([json], { type: 'application/json;charset=utf-8' }));
+  a.download = 'adcp-brief-' + Date.now() + '.json';
+  a.click();
+}
+
+function buildAdcpExportHtml(brief) {
+  var brand = (brief.brand || {}).name || '—';
+  var rows = Object.entries ? Object.entries(brief).map(function(e) {
+    var key = e[0], val = e[1];
+    return '<tr><td><strong>' + key + '</strong></td><td><pre style="margin:0;white-space:pre-wrap;font-size:11px">' + JSON.stringify(val, null, 2) + '</pre></td></tr>';
+  }).join('') : '';
+  return '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>AdCP Brief — ' + brand + '</title>' +
+    '<style>body{font-family:"Hiragino Kaku Gothic ProN",sans-serif;max-width:860px;margin:40px auto;padding:0 24px;color:#1a1a1a;line-height:1.7}' +
+    'h1{font-size:20px;border-bottom:2px solid #1a1a1a;padding-bottom:8px;margin-bottom:6px}.meta{font-size:11px;color:#888;margin-bottom:24px}' +
+    'table{width:100%;border-collapse:collapse;font-size:12px}td{padding:8px 12px;border:1px solid #ddd;vertical-align:top}' +
+    'tr:nth-child(even) td{background:#fafafa}pre{background:#f5f5f5;border-radius:4px;padding:6px}' +
+    '@media print{body{margin:0}}</style></head>' +
+    '<body><h1>AdCP Planning Brief</h1>' +
+    '<div class="meta">Brand: ' + brand + ' / Generated: ' + (brief.generated_at || new Date().toISOString()) + ' / Version: ' + (brief.adcp_version || 'draft') + '</div>' +
+    '<table>' + rows + '</table></body></html>';
+}
+
+function downloadAdcpHtml() {
+  if (!_adcpBrief) return;
+  var html = buildAdcpExportHtml(_adcpBrief);
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  a.download = 'adcp-brief-' + Date.now() + '.html';
+  a.click();
+}
+
+function downloadAdcpPdf() {
+  if (!_adcpBrief) return;
+  var html = buildAdcpExportHtml(_adcpBrief);
+  var w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  w.onload = function() { w.focus(); w.print(); };
+}
+
+function buildSimExportHtml() {
+  var brand = (_adcpBrief && _adcpBrief.brand) ? _adcpBrief.brand.name : '—';
+  var strategy = (_lastAllocatorResult && _lastAllocatorResult.strategy_type) || '—';
+  var proposalsEl = document.getElementById('adcpProposals');
+  var innerContent = proposalsEl ? proposalsEl.innerHTML : '';
+  return '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>Ad Strategy Decision Simulator — ' + brand + '</title>' +
+    '<style>' +
+    'body{font-family:"Hiragino Kaku Gothic ProN",sans-serif;max-width:960px;margin:40px auto;padding:0 24px;color:#1a1a1a;line-height:1.7;background:#fff}' +
+    'h1{font-size:20px;border-bottom:2px solid #1a1a1a;padding-bottom:8px;margin-bottom:6px}' +
+    '.meta{font-size:11px;color:#888;margin-bottom:24px}' +
+    /* Agent cards */
+    '.adcp-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:16px 0}' +
+    '.adcp-agent-card{border:1px solid #ddd;border-radius:8px;padding:16px;position:relative;background:#fafafa}' +
+    '.adcp-agent-card.adcp-recommended{border-color:#1a7a4a}' +
+    '.adcp-rec-badge{position:absolute;top:10px;right:10px;font-size:9px;background:#e6f7ee;color:#1a7a4a;border:1px solid #1a7a4a;border-radius:4px;padding:2px 7px}' +
+    '.adcp-agent-name{font-size:10px;color:#888;letter-spacing:.1em;margin-bottom:4px}' +
+    '.adcp-agent-score{font-size:32px;font-weight:700;line-height:1;margin-bottom:10px}' +
+    '.adcp-agent-score span{font-size:13px;font-weight:400;color:#888}' +
+    '.adcp-agent-meta{font-size:11px;color:#555;line-height:1.8;margin-bottom:10px}' +
+    '.adcp-agent-meta strong{color:#1a1a1a}' +
+    '.adcp-agent-execution{margin-top:10px;padding:8px 10px;background:#f0f0ff;border:1px solid #c0c0ee;border-radius:6px}' +
+    '.execution-title{font-size:9px;color:#555;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}' +
+    '.execution-row{font-size:10px;color:#555;line-height:1.6}.execution-row strong{color:#1a1a1a}' +
+    '.execution-note{margin-top:4px;font-size:10px;color:#888;line-height:1.6}' +
+    '.adcp-tag-list{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}' +
+    '.adcp-tag{font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid #ddd;color:#555}' +
+    '.adcp-pos{border-color:#1a7a4a;color:#1a7a4a;background:#e6f7ee}' +
+    '.adcp-neg{border-color:#c0392b;color:#c0392b;background:#fdecea}' +
+    /* Alloc bars */
+    '.adcp-alloc{background:#f5f5f5;border:1px solid #ddd;border-radius:8px;padding:14px 18px;margin-top:14px}' +
+    '.adcp-alloc-title{font-size:10px;color:#555;letter-spacing:.1em;margin-bottom:10px}' +
+    '.adcp-alloc-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}' +
+    '.adcp-alloc-label{font-size:12px;min-width:80px}' +
+    '.adcp-alloc-bar-wrap{flex:1;background:#ddd;border-radius:3px;height:6px}' +
+    '.adcp-alloc-bar{height:100%;border-radius:3px}' +
+    '.adcp-alloc-pct{font-size:11px;min-width:32px;text-align:right;color:#555}' +
+    /* Allocator */
+    '.allocator-panel{background:#f0f0ff;border:1px solid #c0c0ee;border-radius:8px;padding:16px 18px;margin-top:14px}' +
+    '.allocator-header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}' +
+    '.allocator-label{font-size:10px;color:#888;letter-spacing:.1em;text-transform:uppercase}' +
+    '.allocator-strategy{font-size:13px;font-weight:700}' +
+    '.allocator-review{font-size:9px;background:#fff7e6;color:#b7791f;border:1px solid #f6ad55;padding:2px 8px;border-radius:4px;margin-left:auto}' +
+    '.allocator-summary{font-size:12px;color:#555;line-height:1.7;margin-bottom:10px;padding:8px 12px;background:#fff;border-radius:5px}' +
+    '.allocator-quality{margin-top:8px;font-size:11px;color:#555}.quality-row{line-height:1.6}.quality-basis{font-size:10px;color:#888;font-style:italic;margin-top:3px}' +
+    '.allocator-tension{margin-top:8px}.alloc-constraint,.execution-row{font-size:10px}' +
+    '.allocator-constraints{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}' +
+    '.alloc-constraint{font-size:10px;color:#b7791f;background:#fff7e6;border:1px solid #f6ad55;border-radius:4px;padding:2px 8px}' +
+    '.allocator-reasoning-title{font-size:10px;color:#555;letter-spacing:.1em;margin:10px 0 6px;padding-top:10px;border-top:1px solid #ddd}' +
+    '.allocator-reasoning{display:flex;flex-direction:column;gap:6px}' +
+    '.reasoning-row{display:grid;grid-template-columns:80px 40px 1fr;gap:8px;align-items:start;padding:6px 10px;background:#fff;border-radius:5px}' +
+    '.reasoning-agent{font-size:11px;font-weight:700}.reasoning-pct{font-size:11px;font-weight:700;text-align:right}.reasoning-text{font-size:10px;color:#555;line-height:1.6}' +
+    /* Scenario */
+    '.scenario-section{margin-top:14px}.scenario-title{font-size:10px;color:#555;letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px}' +
+    '.scenario-subtitle{font-size:10px;color:#888;margin-bottom:12px}' +
+    '.scenario-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}' +
+    '.scenario-card{background:#fafafa;border:1px solid #ddd;border-radius:8px;padding:14px 16px}' +
+    '.scenario-card-recommended{border-color:#1a7a4a}' +
+    '.scenario-card-label{font-size:12px;font-weight:700;margin-bottom:6px}' +
+    '.scenario-card-summary{font-size:11px;color:#555;line-height:1.7;margin-bottom:10px}' +
+    '.scenario-mini-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}' +
+    '.scenario-mini-label{font-size:10px;color:#555;min-width:50px}' +
+    '.scenario-mini-bar-wrap{flex:1;background:#ddd;border-radius:3px;height:4px}' +
+    '.scenario-mini-bar{height:100%;border-radius:3px}' +
+    '.scenario-mini-pct{font-size:9px;color:#555;min-width:26px;text-align:right}' +
+    '.scenario-meta{border-top:1px solid #ddd;padding-top:8px;margin-top:8px}' +
+    '.scenario-meta-row{display:flex;gap:6px;margin-bottom:4px}' +
+    '.scenario-meta-key{font-size:9px;color:#888;text-transform:uppercase;min-width:46px;padding-top:2px}' +
+    '.scenario-meta-val{font-size:10px;color:#555;line-height:1.5}' +
+    '.scenario-risk{color:#c0392b}' +
+    '.scenario-rec-badge{font-size:9px;background:#e6f7ee;color:#1a7a4a;border:1px solid #1a7a4a;border-radius:4px;padding:1px 6px;margin-left:6px}' +
+    '@media print{body{margin:0}}' +
+    '</style></head>' +
+    '<body>' +
+    '<h1>Ad Strategy Decision Simulator</h1>' +
+    '<div class="meta">Brand: ' + brand + ' / Strategy: ' + strategy + ' / Generated: ' + new Date().toLocaleDateString('ja-JP') + '</div>' +
+    innerContent +
+    '</body></html>';
+}
+
+function downloadSimHtml() {
+  var html = buildSimExportHtml();
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  a.download = 'simulator-' + Date.now() + '.html';
+  a.click();
+}
+
+function downloadSimPdf() {
+  var html = buildSimExportHtml();
+  var w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  w.onload = function() { w.focus(); w.print(); };
+}
+
+// Seller Agents propose.
+// Allocator Agent decides.
+// Human approves.
+//
+// User Input
+// → AdCP Brief
+// → External Seller Agent Proposals
+// → Allocator Agent
+// → Suggested Budget Allocation + Reasoning
+//
+// Rakuten/internal media excluded due to different evaluation logic
+
+// ② simulateAdcpProposals — 4媒体版
+// 状態管理: 毎回フォームから最新のbriefを再生成する（UIを変えない_buildBriefOnlyを使用）
+function simulateAdcpProposals() {
+  // UIを更新せずbriefだけを最新フォーム入力から再生成
+  var brief = _buildBriefOnly();
+  if (!brief) { console.error('[Simulator] Failed to generate brief'); return; }
+
+  // デバッグ: 意図シグナルの確認用
+  console.log('[Simulator Brief]', brief.campaign_brief);
+  console.log('[Simulator Intent Signals]', brief.intent_signals);
+
+  _lastAllocatorResult = null; // 前回結果をリセット
+
+  try {
+    var tiktok  = tiktokSellerAgent(brief);
+    var youtube = youtubeSellerAgent(brief);
+    var google  = googleSellerAgent(brief);
+    var meta    = metaSellerAgent(brief);
+    tiktok.score  = calculateAgentScore('tiktok',  brief);
+    youtube.score = calculateAgentScore('youtube', brief);
+    google.score  = calculateAgentScore('google',  brief);
+    meta.score    = calculateAgentScore('meta',    brief);
+    var proposals = [tiktok, youtube, google, meta].sort(function(a, b) { return b.score - a.score; });
+    proposals[0].recommended = true;
+    var allocatorResult = allocatorAgent(proposals, brief);
+    var scenarios = scenarioAgent(proposals, brief);
+    renderAdcpProposals(proposals, allocatorResult, scenarios);
+  } catch(e) { console.error('[AdCP] simulateAdcpProposals error:', e); }
+}
+
+// WHAT: Strategy intent
+// WHERE: Channel / Seller Agent
+// HOW: Execution engine and automation level
+
+// ② tiktokSellerAgent
+function tiktokSellerAgent(brief) {
+  var b = adcpParseBudget(brief.budget_constraints.total_budget);
+  return {
+    agent_name: 'TikTok Agent',
+    inventory_type: 'Short Video / In-Feed Ads / TopView',
+    estimated_reach: adcpFmt(Math.round(b * 0.8)) + ' imp/month',
+    estimated_cpm: '¥800 - ¥1,200',
+    estimated_ctr: '1.8% - 3.5%',
+    estimated_cvr: '0.8% - 2.0% (variable)',
+    recommended_budget: '¥' + adcpFmt(Math.round(b * 0.25)),
+    creative_fit: 'Short-form vertical video (9:16), 15-60s, hook within 3s',
+    strengths: ['Gen Z / youth reach', 'High CTR on trending content', 'Viral potential', 'Low CPM vs reach'],
+    risks: ['CVR unstable — creative-dependent', 'Brand safety review required', 'Performance varies by creative'],
+    execution_mode: 'For You feed algorithm / Creative-driven delivery',
+    automation_level: 'High',
+    control_level: 'Low-Medium',
+    optimization_scope: 'Creative resonance, youth discovery, trend-based distribution',
+    explainability: 'Low',
+    decision_note: 'TikTok is highly algorithmic and creative-dependent. It is strong for discovery but less predictable for conversion.',
+    score: 0
+    // FUTURE: TikTok Seller Agent API連携ポイント
+  };
+}
+
+// ② youtubeSellerAgent
+function youtubeSellerAgent(brief) {
+  var b = adcpParseBudget(brief.budget_constraints.total_budget);
+  return {
+    agent_name: 'YouTube Agent',
+    inventory_type: 'Skippable In-Stream / Bumper / Discovery Ads',
+    estimated_reach: adcpFmt(Math.round(b * 1.2)) + ' imp/month',
+    estimated_cpm: '¥400 - ¥900',
+    estimated_ctr: '0.4% - 1.2%',
+    estimated_cvr: '1.5% - 3.0%',
+    recommended_budget: '¥' + adcpFmt(Math.round(b * 0.25)),
+    creative_fit: 'Video 15s-30s (skippable), strong brand story in first 5s',
+    strengths: ['Widest reach across all demographics', 'Strong brand recall', 'Brand-safe environment', 'Google audience data'],
+    risks: ['Higher CPM vs TikTok', 'Skip rate high if hook weak', 'Creative quality critical'],
+    execution_mode: 'Google video delivery / YouTube Shorts / In-stream optimization',
+    automation_level: 'Medium-High',
+    control_level: 'Medium',
+    optimization_scope: 'Video reach, brand recall, audience signals, contextual delivery',
+    explainability: 'Medium',
+    decision_note: 'YouTube offers strong reach and brand impact with relatively higher control than fully automated conversion systems.',
+    score: 0
+    // FUTURE: Google Ads AdCP連携ポイント
+  };
+}
+
+// ② googleSellerAgent
+function googleSellerAgent(brief) {
+  var b = adcpParseBudget(brief.budget_constraints.total_budget);
+  return {
+    agent_name: 'Google Agent',
+    inventory_type: 'Search / P-MAX / Display Network',
+    estimated_reach: adcpFmt(Math.round(b * 1.5)) + ' imp/month',
+    estimated_cpm: '¥200 - ¥600 (Display) / CPC ¥100-¥800 (Search)',
+    estimated_ctr: '2.0% - 5.0% (Search) / 0.3% - 0.8% (Display)',
+    estimated_cvr: '3.0% - 8.0% (intent-based)',
+    recommended_budget: '¥' + adcpFmt(Math.round(b * 0.30)),
+    creative_fit: 'Text ads (Search), responsive display, video (P-MAX)',
+    strengths: ['Highest CVR via purchase intent', 'Search demand capture', 'P-MAX cross-channel optimization', 'Detailed conversion tracking'],
+    risks: ['CPC高騰リスク（競合過多領域）', 'Search volume dependent', 'Creative less impactful than social'],
+    execution_mode: 'AI Max / P-MAX / Search Automation',
+    automation_level: 'High',
+    control_level: 'Low-Medium',
+    optimization_scope: 'Search intent, conversion, cross-format delivery',
+    explainability: 'Medium-Low',
+    decision_note: 'Google is strong for intent capture and conversion scaling, but campaign control increasingly shifts to AI-driven optimization.',
+    score: 0
+    // FUTURE: Google Ads API / AdCP連携ポイント
+  };
+}
+
+// ② metaSellerAgent
+function metaSellerAgent(brief) {
+  var b = adcpParseBudget(brief.budget_constraints.total_budget);
+  return {
+    agent_name: 'Meta Agent',
+    inventory_type: 'Instagram / Facebook / Reels / Stories',
+    estimated_reach: adcpFmt(Math.round(b * 1.0)) + ' imp/month',
+    estimated_cpm: '¥600 - ¥1,500',
+    estimated_ctr: '0.8% - 2.5%',
+    estimated_cvr: '1.5% - 4.0%',
+    recommended_budget: '¥' + adcpFmt(Math.round(b * 0.20)),
+    creative_fit: 'Image / carousel / Reels video, strong visual hook, CTA-driven',
+    strengths: ['Balanced CTR / CVR', 'Strong retargeting via Pixel', 'Lookalike audience precision', 'Wide age range coverage'],
+    risks: ['Creative quality dependent', 'CPM上昇傾向', 'iOS privacy changes limit tracking', 'Ad fatigue on static creative'],
+    execution_mode: 'Advantage+ / Algorithmic Audience Expansion',
+    automation_level: 'High',
+    control_level: 'Medium',
+    optimization_scope: 'Interest signals, lookalike expansion, retargeting, creative delivery',
+    explainability: 'Medium',
+    decision_note: 'Meta balances automation and creative control. It is useful when visual assets and audience signals are strong.',
+    score: 0
+    // FUTURE: Meta Marketing API / AdCP連携ポイント
+  };
+}
+
+// ② calculateAgentScore — 4媒体版スコアロジック
+function calculateAgentScore(agent, brief) {
+  var score    = 50;
+  var obj      = (brief.objective || '').toLowerCase();
+  var channels = (brief.preferred_channels || []).join(' ').toLowerCase();
+  var audience = (brief.target_audience.age_range || '').toLowerCase();
+  var budget   = brief.budget_constraints.total_budget || '';
+  var kpi      = JSON.stringify(brief.kpi || '').toLowerCase();
+  var gov      = brief.governance_notes || {};
+  var btob     = ((brief.brand || {}).btob_btoc || '').toLowerCase();
+  var notes    = (brief.campaign_brief + ' ' + (gov.notes || '')).toLowerCase();
+  var intentType = brief.intent_type || 'conversion_like';
+
+  if (agent === 'tiktok') {
+    if (/10〜20代|z世代/.test(audience))                           score += 20;
+    if (/20〜30代/.test(audience))                                 score += 10;
+    if (/short.?video|tiktok/i.test(channels + notes))            score += 15;
+    if (/認知|awareness|reach/i.test(obj + notes))                score += 8;
+    if (/〜50万|< 500/.test(budget))                              score += 8;
+    if (gov.brand_safety)                                          score -= 5;
+    // Part3⑨: 学習系ではTikTok抑制
+    if (intentType === 'learning')                                 score -= 5;
+  }
+  if (agent === 'youtube') {
+    if (/認知|awareness|brand/i.test(obj + notes))                score += 20;
+    if (/幅広い|全年代/.test(audience))                            score += 15;
+    if (/30〜40代|40〜50代/.test(audience))                        score += 8;
+    if (/youtube/i.test(channels))                                 score += 12;
+    if (/> 10,000,000|5,000,000.*10,000,000/.test(budget))        score += 10;
+    if (gov.brand_safety)                                          score += 8;
+    // Part3⑧: 教育・学習系ではYouTubeブースト
+    if (intentType === 'learning')                                 score += 10;
+  }
+  if (agent === 'google') {
+    if (/cv|cpa|roas|ec購買|purchase|conversion/i.test(obj + kpi + notes)) score += 25;
+    if (/search|検索|intent/i.test(channels + notes))              score += 20;
+    if (/リード|lead/i.test(obj))                                  score += 15;
+    if (/btob|b2b/.test(btob))                                     score += 10;
+    if (/認知のみ|awareness.?only/i.test(obj))                     score -= 8;
+  }
+  if (agent === 'meta') {
+    if (/instagram|facebook|meta/i.test(channels + notes))         score += 15;
+    if (/20〜30代|30〜40代/.test(audience))                        score += 12;
+    if (/btoc|b2c/.test(btob))                                     score += 10;
+    if (/interest|retarget|リターゲ/i.test(channels + notes))      score += 12;
+    if (/クリエイティブ不足|creative.?limited/i.test(notes))       score -= 8;
+    if (/10〜20代|z世代/.test(audience))                           score += 5;
+  }
+  return Math.min(99, Math.max(10, score));
+}
+
+// ② generateBudgetAllocation — legacy互換。allocatorAgent()から内部的に使用
+function generateBudgetAllocation(proposals) {
+  var total = proposals.reduce(function(sum, p) { return sum + p.score; }, 0);
+  var remaining = 100;
+  return proposals.map(function(p, i) {
+    if (i === proposals.length - 1) return { agent: p.agent_name, percent: remaining + '%', _pct: remaining };
+    var pct = Math.round((p.score / total) * 100);
+    remaining -= pct;
+    return { agent: p.agent_name, percent: pct + '%', _pct: pct };
+  });
+}
+
+// ===== Allocator Agent =====
+// Seller Agents propose. Allocator Agent decides. Human approves.
+// Allocator Agent selects one recommended allocation.
+// Scenario Agent compares multiple strategic alternatives.
+// Human decides which strategy to approve.
+//
+// FUTURE 拡張ポイント:
+//   - 媒体別制約UI（最低%/最大%）との連動: constraints_applied に反映
+//   - 実績CPAとの連動: past_performance_summary を参照してスコア補正
+//   - 複数ラウンド交渉: Seller→Allocator→Seller のフィードバックループ
+
+// helpers
+function clampAllocation(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function normalizeAllocation(allocation) {
+  var total = allocation.reduce(function(s, a) { return s + a._pct; }, 0);
+  var remaining = 100;
+  return allocation.map(function(a, i) {
+    if (i === allocation.length - 1) return { agent: a.agent, percent: remaining + '%', _pct: remaining };
+    var pct = Math.round((a._pct / total) * 100);
+    remaining -= pct;
+    return { agent: a.agent, percent: pct + '%', _pct: pct };
+  });
+}
+
+function countKeywordMatches(text, patterns) {
+  var count = 0;
+  patterns.forEach(function(p) {
+    var regex = new RegExp(p, 'i');
+    if (regex.test(text)) count++;
+  });
+  return count;
+}
+
+// ③ classifyAllocationStrategy — スコア型判定（v5.4強化版）
+function classifyAllocationStrategy(brief) {
+  var intentType = brief.intent_type || 'conversion_like';
+
+  // 🔴 Intent Typeを最優先でreturn（スコア計算より前に必ず判定）
+  if (intentType === 'learning')   { console.log('[FINAL STRATEGY] learning override → balanced'); return 'balanced'; }
+  if (intentType === 'comparison') { console.log('[FINAL STRATEGY] comparison override → balanced'); return 'balanced'; }
+  if (intentType === 'transaction'){ console.log('[FINAL STRATEGY] transaction override → conversion_focus'); return 'conversion_focus'; }
+  // impulseはoverrideしない → 以下のスコアロジックに任せる
+
+  var obj   = (brief.objective || '').toLowerCase();
+  var kpi   = JSON.stringify(brief.kpi || '').toLowerCase();
+  var notes = (brief.campaign_brief + ' ' + ((brief.governance_notes || {}).notes || '')).toLowerCase();
+  var past  = brief.past_performance_summary || [];
+  var wish  = (brief.target_audience.interests || []).length;
+  var combined = obj + ' ' + kpi + ' ' + notes;
+
+  var intentStrength = brief.intent_strength || 'medium';
+  var intentScore    = brief.intent_score    || 50;
+
+  var conversionPatterns = ['cv','cpa','roas','conversion','purchase','ec購買','リード','lead'];
+  var awarenessPatterns  = ['認知','awareness','reach','brand','branding','lift'];
+
+  var conversionScore = countKeywordMatches(combined, conversionPatterns);
+  var awarenessScore  = countKeywordMatches(combined, awarenessPatterns);
+  var testScore   = 0;
+  var balancedScore = 0;
+
+  // Intent Strength補正
+  if (past.length === 0 && intentStrength === 'low')    testScore += 3;
+  if (past.length === 0 && intentStrength === 'medium') testScore += 1;
+  if (past.length === 0 && intentStrength === 'high')   { conversionScore += 1; }
+  if (kpi === '[]') testScore += 2;
+  if (wish >= 3)    testScore += 2;
+
+  // objective × intent_strengthの補正
+  if (/ec purchase|conversion|ec購買|lead generation/i.test(obj) && intentStrength === 'high') conversionScore += 2;
+  if (/brand awareness|reach/i.test(obj) && intentStrength === 'low') awarenessScore += 2;
+
+  // impulse補正
+  if (intentType === 'impulse') { awarenessScore += 1; conversionScore += 1; }
+
+  // 検討単体補正
+  if ((brief.intent_signals || []).indexOf('検討') !== -1 && intentType === 'conversion_like') balancedScore += 1;
+
+  var strategy = testScore >= 4 ? 'test_learning'
+    : balancedScore >= 2 ? 'balanced'
+    : conversionScore > awarenessScore + 1 ? 'conversion_focus'
+    : awarenessScore > conversionScore + 1 ? 'awareness_focus'
+    : 'balanced';
+
+  console.log('[FINAL STRATEGY]', {
+    intent_type: intentType, intent_strength: intentStrength,
+    scores: { conversion: conversionScore, awareness: awarenessScore, test: testScore, balanced: balancedScore },
+    final_strategy: strategy
+  });
+
+  return strategy;
+}
+
+// ③ allocatorAgent — 戦略型配分（v5.4：strategyごとの配分レンジ採用）
+function allocatorAgent(proposals, brief) {
+  var strategy = classifyAllocationStrategy(brief);
+  var constraints = [];
+
+  function findAgent(kw) {
+    var p = proposals.find(function(p) { return new RegExp(kw, 'i').test(p.agent_name); });
+    return p ? p.agent_name : kw + ' Agent';
+  }
+  var gName = findAgent('google'), mName = findAgent('meta');
+  var yName = findAgent('youtube'), tName = findAgent('tiktok');
+
+  var baseAlloc = {};
+
+  if (strategy === 'conversion_focus') {
+    baseAlloc[gName] = 40; baseAlloc[mName] = 25;
+    baseAlloc[yName] = 20; baseAlloc[tName] = 15;
+    constraints.push('Google prioritized — 検索意図 × CVR');
+    constraints.push('TikTok suppressed — CVR instability in conversion mode');
+  } else if (strategy === 'awareness_focus') {
+    baseAlloc[yName] = 40; baseAlloc[tName] = 30;
+    baseAlloc[mName] = 20; baseAlloc[gName] = 10;
+    constraints.push('YouTube prioritized — ブランドリーチ and video recall');
+    constraints.push('Google suppressed — 認知フェーズでは非効率');
+  } else if (strategy === 'test_learning') {
+    var total = proposals.reduce(function(s, p) { return s + p.score; }, 0);
+    proposals.forEach(function(p) {
+      var raw = Math.round((p.score / total) * 100);
+      baseAlloc[p.agent_name] = clampAllocation(raw, 15, 35);
+    });
+    constraints.push('Max 35% / Min 15% applied — test_learning mode');
+    constraints.push('Even distribution preferred — prioritize learning over performance');
+  } else {
+    // balanced: score比例、最大40%・最小10%
+    var btotal = proposals.reduce(function(s, p) { return s + p.score; }, 0);
+    proposals.forEach(function(p) {
+      var raw = Math.round((p.score / btotal) * 100);
+      baseAlloc[p.agent_name] = clampAllocation(raw, 10, 40);
+    });
+  }
+
+  var rawAlloc = proposals.map(function(p) {
+    return { agent: p.agent_name, _pct: baseAlloc[p.agent_name] || 25 };
+  });
+  var allocation = normalizeAllocation(rawAlloc);
+  var reasoning = generateAllocationReasoning(allocation, proposals, brief, strategy);
+
+  // Decision Quality Layer
+  // - Confidence: how reliable this decision is
+  // - Data Quality: input data strength
+  // - Tension: trade-offs in decision making
+  var past = brief.past_performance_summary || [];
+  var hasCPA = past.filter(function(p) { return p.cpa_jpy; }).length;
+
+  var confidence = 0.5;
+  if (past.length === 0)                          confidence = 0.4;
+  if (past.length >= 2 && hasCPA >= 2)            confidence = 0.7;
+  if (past.length >= 3 && hasCPA >= 3)            confidence = 0.85;
+
+  // Input mode confidence補正
+  if (brief.input_mode === 'minimum_intent')   confidence = Math.min(confidence, 0.55);
+  if (brief.input_mode === 'informed_decision') confidence = Math.min(confidence, 0.75);
+  if (brief.input_mode === 'data_supported')   confidence = Math.min(confidence, 0.90);
+
+  var dataQuality = 'low';
+  if (past.length >= 2)                           dataQuality = 'medium';
+  if (past.length >= 3 && hasCPA >= 3)            dataQuality = 'high';
+
+  var tension = [];
+  if (strategy === 'conversion_focus')  tension.push('High CV efficiency vs Low control (Google AI automation)');
+  if (strategy === 'awareness_focus')   tension.push('Reach scale vs Explainability (TikTok / YouTube)');
+  if (strategy === 'balanced')          tension.push('Performance vs Learning balance');
+  if (strategy === 'test_learning')     tension.push('Short-term performance vs Data acquisition');
+  if (brief.input_mode === 'minimum_intent') tension.push('Low input completeness vs Need for strategic direction');
+  // Part9: Intent Tension
+  if (brief.intent_strength === 'high' && past.length === 0) {
+    tension.push('Strong purchase intent vs No past performance data');
+  }
+  // Part6: learning型のtension
+  if ((brief.intent_type || '') === 'learning') {
+    tension.push('User needs understanding before conversion');
+  }
+
+  // Part2: 媒体別制約の適用
+  var constrained = applyMediaConstraints(allocation, brief);
+  allocation = constrained.allocation;
+  if (constrained.constraints_applied.length) {
+    tension.push('Optimization logic vs User-defined media constraints');
+    constraints = constraints.concat(constrained.constraints_applied);
+  }
+
+  return {
+    strategy_type: strategy,
+    allocation: allocation,
+    summary: reasoning.summary,
+    reasoning: reasoning.items,
+    constraints_applied: constraints,
+    human_review_required: true,
+    strategy_confidence: confidence,
+    data_quality: dataQuality,
+    decision_tension: tension,
+    input_mode: brief.input_mode || '',
+    input_completeness: brief.input_completeness || 0,
+    decision_basis: brief.decision_basis || '',
+    recommended_scenario: deriveRecommendedScenario(strategy),
+    intent_strength: brief.intent_strength || 'medium',
+    intent_score: brief.intent_score || 50,
+    intent_signals: brief.intent_signals || [],
+    intent_type: brief.intent_type || 'conversion_like'
+  };
+}
+
+// Part2: strategy_typeからrecommended_scenarioを導出
+function deriveRecommendedScenario(strategyType) {
+  if (strategyType === 'conversion_focus') return 'conversion_safe';
+  if (strategyType === 'awareness_focus')  return 'aggressive_growth';
+  if (strategyType === 'balanced')         return 'balanced_learning';
+  if (strategyType === 'test_learning')    return 'balanced_learning';
+  return 'balanced_learning';
+}
+
+// ⑧ applyMediaConstraints — 媒体別制約をallocationに適用して再正規化
+// FUTURE: 制約UIとの完全連動・複数媒体の相互調整
+// Part1: Channel Alias Map — 媒体別制約のマッチング精度向上
+var CHANNEL_ALIAS = {
+  google:  ['google', 'グーグル', '検索', 'search', 'p-max', 'pmax', 'ai max'],
+  meta:    ['meta', 'facebook', 'instagram', 'fb', 'ig', 'フェイスブック', 'インスタ', 'インスタグラム'],
+  youtube: ['youtube', 'yt', 'ユーチューブ', '動画', 'shorts'],
+  tiktok:  ['tiktok', 'tik tok', 'ティックトック']
+};
+
+// Part1: チャンネル名をAliasMapでマッチング
+function matchChannel(agentName, constraintName) {
+  var a = agentName.toLowerCase();
+  var c = constraintName.toLowerCase();
+  // Alias Mapで同一グループか判定
+  for (var group in CHANNEL_ALIAS) {
+    var aliases = CHANNEL_ALIAS[group];
+    var agentInGroup = aliases.some(function(alias) { return a.indexOf(alias) !== -1; });
+    var constraintInGroup = aliases.some(function(alias) { return c.indexOf(alias) !== -1; });
+    if (agentInGroup && constraintInGroup) return true;
+  }
+  // Fallback: 直接部分一致
+  return a.indexOf(c) !== -1 || c.indexOf(a.replace(' agent', '')) !== -1;
+}
+
+function applyMediaConstraints(allocation, brief) {
+  var mediaConstraints = brief.media_constraints || [];
+  if (!mediaConstraints.length) return { allocation: allocation, constraints_applied: [] };
+
+  var applied = [];
+  var alloc = allocation.map(function(a) { return { agent: a.agent, _pct: parseInt(a.percent), fixed: false }; });
+
+  // min合計チェック
+  var totalMin = mediaConstraints.reduce(function(s, c) { return s + (c.min_percent || 0); }, 0);
+  if (totalMin > 100) {
+    applied.push('Warning: total minimum constraints exceed 100%');
+  }
+
+  // Step1: min_percent 適用 → 固定
+  alloc.forEach(function(a) {
+    mediaConstraints.forEach(function(c) {
+      if (matchChannel(a.agent, c.channel) && c.min_percent !== null && a._pct < c.min_percent) {
+        var diff = c.min_percent - a._pct;
+        a._pct = c.min_percent;
+        a.fixed = true;
+        applied.push(normalizeAgentName(a.agent) + ' fixed at minimum ' + c.min_percent + '% (user constraint)');
+
+        // 残り%を未固定媒体から現在比率で削る
+        var unfixed = alloc.filter(function(b) { return !b.fixed && b.agent !== a.agent; });
+        var unfixedTotal = unfixed.reduce(function(s, b) { return s + b._pct; }, 0);
+        if (unfixedTotal > 0) {
+          unfixed.forEach(function(b) {
+            var cut = Math.round((b._pct / unfixedTotal) * diff);
+            b._pct = Math.max(0, b._pct - cut);
+          });
+        }
+      }
+    });
+  });
+
+  // Step2: max_percent 適用 → 削った分を上限未達媒体に再配分
+  alloc.forEach(function(a) {
+    mediaConstraints.forEach(function(c) {
+      if (matchChannel(a.agent, c.channel) && c.max_percent !== null && a._pct > c.max_percent) {
+        var surplus = a._pct - c.max_percent;
+        a._pct = c.max_percent;
+        applied.push(normalizeAgentName(a.agent) + ' capped at maximum ' + c.max_percent + '% (user constraint)');
+
+        // surplusを他の媒体（max未達）へ現在比率で再配分
+        var eligible = alloc.filter(function(b) {
+          if (b.agent === a.agent) return false;
+          var maxC = mediaConstraints.find(function(mc) { return matchChannel(b.agent, mc.channel); });
+          return !maxC || b._pct < maxC.max_percent;
+        });
+        var eligibleTotal = eligible.reduce(function(s, b) { return s + b._pct; }, 0);
+        if (eligibleTotal > 0) {
+          eligible.forEach(function(b) {
+            var add = Math.round((b._pct / eligibleTotal) * surplus);
+            var maxC = mediaConstraints.find(function(mc) { return matchChannel(b.agent, mc.channel); });
+            var cap = maxC && maxC.max_percent !== null ? maxC.max_percent : 100;
+            b._pct = Math.min(cap, b._pct + add);
+          });
+        } else {
+          applied.push('Warning: max constraints prevent full redistribution');
+        }
+      }
+    });
+  });
+
+  // Step3: 最終100%正規化（normalizeAllocationを使用）
+  var normalized = normalizeAllocation(alloc.map(function(a) { return { agent: a.agent, _pct: a._pct }; }));
+  return { allocation: normalized, constraints_applied: applied };
+}
+
+// ③ generateAllocationReasoning — 戦略ベースの配分理由（v5.4強化版）
+function generateAllocationReasoning(allocation, proposals, brief, strategy) {
+  var strategyLabels = {
+    conversion_focus: 'Conversion Focus — CV / CPA / ROASを最優先',
+    awareness_focus:  'Awareness Focus — リーチ・認知を最優先',
+    test_learning:    'Test & Learning — 実績データ不足のため均等学習配分',
+    balanced:         'Balanced — スコア比率をそのまま採用'
+  };
+
+  var reasoningMap = {
+    google: {
+      conversion_focus: '検索意図 × CVR — 顕在層を直接捕捉。CV目標に対し最も効率的な媒体。ただしAI Max / P-MAXによりcontrol_levelが低下するためHuman Reviewを重視すること。',
+      awareness_focus:  '認知には非効率 — 検索ニーズ未顕在段階での効果は限定的。最小配分。',
+      test_learning:    '顕在層の受け皿として一定量確保。実績取得後に比率を見直す。',
+      balanced:         '顕在層受け皿 — 検索意図があるユーザーへの到達に有効。'
+    },
+    tiktok: {
+      conversion_focus: 'CVR不安定 — クリエイティブ依存が高い。CV目標では抑制。explainabilityが低くlearning目的で扱うこと。',
+      awareness_focus:  '発見起点 — Z世代・若年層へのバイラルリーチ。認知フェーズで最大効率。explainabilityが低いためlearning期間を設けること。',
+      test_learning:    '若年層リーチのテスト枠。CVR計測が最優先課題。アルゴリズム依存のためlearning目的で扱う。',
+      balanced:         '若年層セグメントへのリーチ補完として配分。explainability低のためlearning枠として管理。'
+    },
+    youtube: {
+      conversion_focus: '補助的 — ブランド認知の下支えとして中程度を維持。brand reachとcontrolのバランスが良い媒体。',
+      awareness_focus:  'ブランドリーチ — 全年代への動画接触。brand reachとcontrolのバランスが最も良く、認知目的で信頼性が高い。',
+      test_learning:    '幅広い年代へのリーチテスト。control levelが中程度のためlearning計測がしやすい。',
+      balanced:         '幅広いデモグラフィックカバレッジ。brand reachとcontrolのバランスが良い安定した媒体。'
+    },
+    meta: {
+      conversion_focus: 'リターゲ — Pixel活用でCV最適化。automationとcreative controlの中間的な媒体として扱う。',
+      awareness_focus:  '中間ファネル — 認知後の検討促進。automationとcreative controlのバランスを活かす。',
+      test_learning:    'オーディエンス学習が速い媒体。automationとcreative controlの中間のため実績データを早期取得しやすい。',
+      balanced:         '中間ファネル — automationとcreative controlのバランス型配分。'
+    }
+  };
+
+  var items = allocation.map(function(a) {
+    var proposal = proposals.find(function(p) { return p.agent_name === a.agent; });
+    var score = proposal ? proposal.score : 0;
+    var key = /google/i.test(a.agent) ? 'google'
+            : /tiktok/i.test(a.agent) ? 'tiktok'
+            : /youtube/i.test(a.agent) ? 'youtube'
+            : /meta/i.test(a.agent) ? 'meta' : '';
+    var reason = (key && reasoningMap[key] && reasoningMap[key][strategy])
+      ? reasoningMap[key][strategy] + ' Seller score: ' + score + '/99.'
+      : 'Allocated based on seller agent score (' + score + '/99).';
+    return { agent: a.agent, percent: a.percent, reason: reason };
+  });
+
+  var summary = strategyLabels[strategy] + '。' +
+    (strategy === 'test_learning'
+      ? 'Past performance data insufficient. Allocation flattened for learning. Review after 4 weeks.'
+      : strategy === 'conversion_focus'
+      ? 'Google × Meta weighted for CV. TikTok suppressed. Shift budget to YouTube after awareness phase.'
+      : strategy === 'awareness_focus'
+      ? 'YouTube × TikTok weighted for reach. Google minimized. Shift to conversion focus after brand lift confirmed.'
+      : 'Score-proportional allocation. No strong signal — monitor all channels weekly.');
+
+  return { summary: summary, items: items };
+}
+
+// ===== Scenario Agent =====
+// Allocator Agent selects one recommended allocation.
+// Scenario Agent compares multiple strategic alternatives.
+// Human decides which strategy to approve.
+
+// ④ generateScenarioAllocation
+function generateScenarioAllocation(type, proposals) {
+  function findName(kw) {
+    var p = proposals.find(function(p) { return new RegExp(kw, 'i').test(p.agent_name); });
+    return p ? p.agent_name : kw + ' Agent';
+  }
+  var g = findName('google'), m = findName('meta'), y = findName('youtube'), t = findName('tiktok');
+
+  var bases = {
+    aggressive_growth: [{ agent: t, _pct: 35 }, { agent: y, _pct: 35 }, { agent: m, _pct: 20 }, { agent: g, _pct: 10 }],
+    conversion_safe:   [{ agent: g, _pct: 40 }, { agent: m, _pct: 30 }, { agent: y, _pct: 15 }, { agent: t, _pct: 15 }],
+    balanced_learning: (function() {
+      var total = proposals.reduce(function(s, p) { return s + p.score; }, 0);
+      return proposals.map(function(p) {
+        var raw = Math.round((p.score / total) * 100);
+        var adj = (raw > 25) ? raw - 2 : raw + 2;
+        return { agent: p.agent_name, _pct: clampAllocation(adj, 15, 35) };
+      });
+    })()
+  };
+
+  return normalizeAllocation(bases[type] || bases.balanced_learning);
+}
+
+// ④ scenarioAgent
+function scenarioAgent(proposals, brief) {
+  var strategy = classifyAllocationStrategy(brief);
+  var recommended = 'balanced_learning';
+  if (strategy === 'conversion_focus') recommended = 'conversion_safe';
+  if (strategy === 'awareness_focus')  recommended = 'aggressive_growth';
+  if (strategy === 'balanced')         recommended = 'balanced_learning';
+  if (strategy === 'test_learning')    recommended = 'balanced_learning';
+
+  // データ不足時の補足サフィックス
+  var inputMode = (brief && brief.input_mode) || 'minimum_intent';
+  var hypothesisSuffix = inputMode === 'minimum_intent'
+    ? ' ※仮説ベース — 初回データ取得後に再判断することを推奨。'
+    : inputMode === 'informed_decision'
+    ? ' ※一部データで補完。実績蓄積後に精度が上がる。'
+    : '';
+
+  return [
+    {
+      scenario_type: 'aggressive_growth',
+      label: 'Aggressive Growth',
+      recommended_scenario: recommended,
+      allocation: generateScenarioAllocation('aggressive_growth', proposals),
+      summary: 'TikTok × YouTubeを中心にリーチを最大化するグロース型配分。認知拡大・バイラル効果を優先する。' + hypothesisSuffix,
+      best_for: '新規ブランド立ち上げ、若年層開拓、認知拡大フェーズ',
+      risk: 'CVR不安定、ブランドセーフティ管理コスト、クリエイティブ品質依存',
+      expected_outcome: '短期リーチ最大化、認知率向上、バイラル波及の可能性。CVは不安定。'
+    },
+    {
+      scenario_type: 'conversion_safe',
+      label: 'Conversion Safe',
+      recommended_scenario: recommended,
+      allocation: generateScenarioAllocation('conversion_safe', proposals),
+      summary: 'Google × Metaの顕在層・リターゲに集中するCV特化配分。CPA効率と安定性を最優先する。' + hypothesisSuffix,
+      best_for: 'CPA目標あり、EC購買、リード獲得、ROAS重視キャンペーン',
+      risk: 'リーチが限定的、新規層開拓が弱い、Google CPC高騰リスク',
+      expected_outcome: '安定したCPA、CVR高め、ROI計測しやすい。リーチ拡大は遅い。'
+    },
+    {
+      scenario_type: 'balanced_learning',
+      label: 'Balanced Learning',
+      recommended_scenario: recommended,
+      allocation: generateScenarioAllocation('balanced_learning', proposals),
+      summary: '4媒体に均等に配分し、実績データを収集することを優先する学習型配分。' + hypothesisSuffix,
+      best_for: '初回キャンペーン、過去実績なし、どの媒体が効くか不明な状態',
+      risk: '短期パフォーマンスは低め、予算効率は最適でない',
+      expected_outcome: '4媒体の実績データが揃い、次回の最適化配分の基礎が作れる。'
+    }
+  ];
+}
+
+// ④ renderScenarioAgent
+function renderScenarioAgent(scenarios) {
+  var colors = {
+    'TikTok Agent': '#00e5ff', 'YouTube Agent': '#ff4d4d',
+    'Google Agent': '#39ff6e', 'Meta Agent': '#ffb800'
+  };
+  var sColors = { aggressive_growth: '#00e5ff', conversion_safe: '#39ff6e', balanced_learning: '#ffb800' };
+
+  var html = '<div class="scenario-section">' +
+    '<div class="scenario-header-row">' +
+      '<div class="scenario-title">Scenario Agent</div>' +
+      '<div class="scenario-subtitle">// Allocator selects one. Scenario compares alternatives. Human decides.</div>' +
+    '</div>' +
+    '<div class="scenario-cards">';
+
+  scenarios.forEach(function(s) {
+    var sColor = sColors[s.scenario_type] || 'var(--accent2)';
+    var isRecommended = s.scenario_type === s.recommended_scenario;
+    var labelText = s.label + (isRecommended ? ' <span class="scenario-rec-badge">Recommended</span>' : '');
+    var miniBar = s.allocation.map(function(a) {
+      var color = colors[a.agent] || 'var(--accent2)';
+      var pct = parseInt(a.percent);
+      return '<div class="scenario-mini-row">' +
+        '<div class="scenario-mini-label">' + a.agent.replace(' Agent', '') + '</div>' +
+        '<div class="scenario-mini-bar-wrap"><div class="scenario-mini-bar" style="width:0%;background:' + color + '" data-w="' + pct + '"></div></div>' +
+        '<div class="scenario-mini-pct">' + a.percent + '</div>' +
+      '</div>';
+    }).join('');
+
+    html +=
+      '<div class="scenario-card' + (isRecommended ? ' scenario-card-recommended' : '') + '">' +
+        '<div class="scenario-card-label" style="color:' + sColor + '">' + labelText + '</div>' +
+        '<div class="scenario-card-summary">' + s.summary + '</div>' +
+        '<div class="scenario-mini-bars">' + miniBar + '</div>' +
+        '<div class="scenario-meta">' +
+          '<div class="scenario-meta-row"><span class="scenario-meta-key">Best for</span><span class="scenario-meta-val">' + s.best_for + '</span></div>' +
+          '<div class="scenario-meta-row"><span class="scenario-meta-key">Risk</span><span class="scenario-meta-val scenario-risk">' + s.risk + '</span></div>' +
+          '<div class="scenario-meta-row"><span class="scenario-meta-key">Outcome</span><span class="scenario-meta-val">' + s.expected_outcome + '</span></div>' +
+        '</div>' +
+      '</div>';
+  });
+
+  html += '</div></div>';
+  return html;
+}
+
+// Strategy Transfer JSON is the bridge from Simulator to Planner.
+// Simulator decides direction. Planner operationalizes it.
+
+var _lastAllocatorResult = null;
+
+// Part2: Agent名を正規化（"Google Agent" → "Google"）
+function normalizeAgentName(agentName) {
+  return agentName.replace(/\s*Agent\s*/i, '').trim();
+}
+
+// Part2: Strategy Transfer JSON生成
+function generateStrategyTransfer(allocatorResult, brief) {
+  if (!allocatorResult || !brief) return null;
+  return {
+    transfer_version: 'draft_v1',
+    source: 'ad_strategy_decision_simulator_poc',
+    strategy_type: allocatorResult.strategy_type || '',
+    input_mode: allocatorResult.input_mode || brief.input_mode || '',
+    input_completeness: allocatorResult.input_completeness || brief.input_completeness || 0,
+    confidence: allocatorResult.strategy_confidence || 0,
+    data_quality: allocatorResult.data_quality || '',
+    decision_basis: allocatorResult.decision_basis || brief.decision_basis || '',
+    recommended_scenario: allocatorResult.recommended_scenario || deriveRecommendedScenario(allocatorResult.strategy_type),
+    allocation: (allocatorResult.allocation || []).map(function(a) {
+      return {
+        channel_group: normalizeAgentName(a.agent),
+        percent: parseInt(a.percent)
+      };
+    }),
+    constraints: allocatorResult.constraints_applied || [],
+    decision_tension: allocatorResult.decision_tension || [],
+    intent_strength: allocatorResult.intent_strength || (brief && brief.intent_strength) || 'medium',
+    intent_score: allocatorResult.intent_score !== undefined ? allocatorResult.intent_score : ((brief && brief.intent_score) || 50),
+    intent_signals: allocatorResult.intent_signals || (brief && brief.intent_signals) || [],
+    intent_type: allocatorResult.intent_type || (brief && brief.intent_type) || 'conversion_like',
+    human_review_required: true,
+    generated_at: new Date().toISOString()
+  };
+}
+
+// Part2: Strategy Transfer JSONをクリップボードにコピー
+function copyStrategyTransferJson() {
+  // 最新briefを優先（なければ再生成）
+  var brief = _adcpBrief || _buildBriefOnly();
+  if (!brief) { console.warn('[StrategyTransfer] brief is null'); return; }
+
+  // allocatorResultがない場合は再計算
+  if (!_lastAllocatorResult) {
+    try {
+      var tiktok  = tiktokSellerAgent(brief);
+      var youtube = youtubeSellerAgent(brief);
+      var google  = googleSellerAgent(brief);
+      var meta    = metaSellerAgent(brief);
+      tiktok.score  = calculateAgentScore('tiktok',  brief);
+      youtube.score = calculateAgentScore('youtube', brief);
+      google.score  = calculateAgentScore('google',  brief);
+      meta.score    = calculateAgentScore('meta',    brief);
+      var proposals = [tiktok, youtube, google, meta].sort(function(a, b) { return b.score - a.score; });
+      _lastAllocatorResult = allocatorAgent(proposals, brief);
+    } catch(e) { console.error('[StrategyTransfer] re-calc error:', e); return; }
+  }
+
+  var json = generateStrategyTransfer(_lastAllocatorResult, brief);
+  if (!json) { console.warn('[StrategyTransfer] generateStrategyTransfer returned null'); return; }
+  console.log('[StrategyTransfer]', JSON.stringify(json, null, 2));
+  try {
+    navigator.clipboard.writeText(JSON.stringify(json, null, 2));
+    var btn = document.getElementById('copyStrategyBtn');
+    if (btn) {
+      var orig = btn.textContent;
+      btn.textContent = '✓ Strategy Copied';
+      setTimeout(function() { btn.textContent = orig; }, 2000);
+    }
+  } catch(e) { console.error('[StrategyTransfer] clipboard error:', e); }
+}
+
+// ② renderAdcpProposals — allocatorResult + scenarios対応版
+function renderAdcpProposals(proposals, allocatorResult, scenarios) {
+  var colors = {
+    'TikTok Agent':  '#00e5ff', 'YouTube Agent': '#ff4d4d',
+    'Google Agent':  '#39ff6e', 'Meta Agent':    '#ffb800'
+  };
+
+  var isAllocatorResult = allocatorResult && allocatorResult.strategy_type;
+  var allocation = isAllocatorResult ? allocatorResult.allocation : allocatorResult;
+
+  // Part2: グローバルにセット（copyStrategyTransferJsonから参照）
+  if (isAllocatorResult) _lastAllocatorResult = allocatorResult;
+
+  // Seller Agentカード
+  var cardsHtml = '<div class="adcp-cards">';
+  proposals.forEach(function(p) {
+    var color = colors[p.agent_name] || 'var(--accent2)';
+    var st = p.strengths.map(function(s) { return '<span class="adcp-tag adcp-pos">' + s + '</span>'; }).join('');
+    var rt = p.risks.map(function(r) { return '<span class="adcp-tag adcp-neg">' + r + '</span>'; }).join('');
+    cardsHtml +=
+      '<div class="adcp-agent-card' + (p.recommended ? ' adcp-recommended' : '') + '">' +
+        (p.recommended ? '<span class="adcp-rec-badge">RECOMMENDED</span>' : '') +
+        '<div class="adcp-agent-name">' + p.agent_name + '</div>' +
+        '<div class="adcp-agent-score" style="color:' + color + '">' + p.score + '<span> / 99</span></div>' +
+        '<div class="adcp-agent-meta">' +
+          '<strong>Inventory:</strong> ' + p.inventory_type + '<br>' +
+          '<strong>Reach:</strong> ' + p.estimated_reach + '<br>' +
+          '<strong>CPM:</strong> ' + p.estimated_cpm + '<br>' +
+          '<strong>CTR:</strong> ' + p.estimated_ctr + '<br>' +
+          '<strong>CVR:</strong> ' + p.estimated_cvr + '<br>' +
+          '<strong>Rec. Budget:</strong> ' + p.recommended_budget + '<br>' +
+          '<strong>Creative:</strong> ' + p.creative_fit +
+        '</div>' +
+        (p.execution_mode ? (
+          '<div class="adcp-agent-execution">' +
+            '<div class="execution-title">Execution Profile</div>' +
+            '<div class="execution-row"><strong>Mode:</strong> ' + p.execution_mode + '</div>' +
+            '<div class="execution-row"><strong>Automation:</strong> ' + p.automation_level + '</div>' +
+            '<div class="execution-row"><strong>Control:</strong> ' + p.control_level + '</div>' +
+            '<div class="execution-row"><strong>Scope:</strong> ' + p.optimization_scope + '</div>' +
+            '<div class="execution-row"><strong>Explainability:</strong> ' + p.explainability + '</div>' +
+            '<div class="execution-note">' + p.decision_note + '</div>' +
+          '</div>'
+        ) : '') +
+        '<div class="adcp-tag-list">' + st + '</div>' +
+        '<div class="adcp-tag-list">' + rt + '</div>' +
+      '</div>';
+  });
+  cardsHtml += '</div>';
+
+  // Budget Allocation バー
+  var allocHtml = '<div class="adcp-alloc"><div class="adcp-alloc-title">// Suggested Budget Allocation</div>';
+  allocation.forEach(function(a) {
+    var color = colors[a.agent] || 'var(--accent2)';
+    var pct = parseInt(a.percent);
+    allocHtml +=
+      '<div class="adcp-alloc-row">' +
+        '<div class="adcp-alloc-label">' + a.agent.replace(' Agent', '') + '</div>' +
+        '<div class="adcp-alloc-bar-wrap"><div class="adcp-alloc-bar" style="width:0%;background:' + color + '" data-w="' + pct + '"></div></div>' +
+        '<div class="adcp-alloc-pct">' + a.percent + '</div>' +
+      '</div>';
+  });
+  allocHtml += '</div>';
+
+  // Allocator Agentパネル
+  var allocatorHtml = '';
+  if (isAllocatorResult) {
+    var sColors = { conversion_focus: 'var(--accent3)', awareness_focus: 'var(--accent)', test_learning: 'var(--warn)', balanced: 'var(--accent2)' };
+    var sColor = sColors[allocatorResult.strategy_type] || 'var(--accent2)';
+    allocatorHtml +=
+      '<div class="allocator-panel">' +
+        '<div class="allocator-header">' +
+          '<span class="allocator-label">Allocator Agent</span>' +
+          '<span class="allocator-strategy" style="color:' + sColor + '">' + allocatorResult.strategy_type + '</span>' +
+          (allocatorResult.human_review_required ? '<span class="allocator-review">Human Review Required</span>' : '') +
+        '</div>' +
+        '<div class="allocator-summary">' + allocatorResult.summary + '</div>' +
+        (allocatorResult.strategy_confidence !== undefined ? (
+          '<div class="allocator-quality">' +
+            '<div class="quality-row"><strong>Confidence:</strong> ' + Math.round(allocatorResult.strategy_confidence * 100) + '%</div>' +
+            '<div class="quality-row"><strong>Data Quality:</strong> ' + allocatorResult.data_quality + '</div>' +
+            (allocatorResult.input_mode ? '<div class="quality-row"><strong>Input Mode:</strong> ' + allocatorResult.input_mode + '</div>' : '') +
+            (allocatorResult.input_completeness !== undefined ? '<div class="quality-row"><strong>Input Completeness:</strong> ' + allocatorResult.input_completeness + '%</div>' : '') +
+            (allocatorResult.decision_basis ? '<div class="quality-row quality-basis">' + allocatorResult.decision_basis + '</div>' : '') +
+            (allocatorResult.intent_strength ? '<div class="quality-row"><strong>Intent Strength:</strong> ' + allocatorResult.intent_strength + '</div>' : '') +
+            (allocatorResult.intent_type ? '<div class="quality-row"><strong>Intent Type:</strong> ' + allocatorResult.intent_type + '</div>' : '') +
+            (allocatorResult.intent_score !== undefined ? '<div class="quality-row"><strong>Intent Score:</strong> ' + allocatorResult.intent_score + '</div>' : '') +
+            (allocatorResult.intent_signals && allocatorResult.intent_signals.length ? '<div class="quality-row"><strong>Intent Signals:</strong> ' + allocatorResult.intent_signals.join(', ') + '</div>' : '') +
+          '</div>'
+        ) : '') +
+        (allocatorResult.decision_tension && allocatorResult.decision_tension.length ? (
+          '<div class="allocator-tension">' +
+            '<div class="execution-title">Decision Tension</div>' +
+            allocatorResult.decision_tension.map(function(t) { return '<div class="execution-row">⚡ ' + t + '</div>'; }).join('') +
+          '</div>'
+        ) : '');
+    if (allocatorResult.constraints_applied && allocatorResult.constraints_applied.length) {
+      allocatorHtml += '<div class="allocator-constraints">';
+      allocatorResult.constraints_applied.forEach(function(c) {
+        allocatorHtml += '<span class="alloc-constraint">⚡ ' + c + '</span>';
+      });
+      allocatorHtml += '</div>';
+    }
+    if (allocatorResult.reasoning && allocatorResult.reasoning.length) {
+      // Strategy Transfer JSONボタン（Reasoning直前）
+      allocatorHtml += '<div style="margin:12px 0 4px">' +
+        '<button class="adcp-btn-ghost" id="copyStrategyBtn" onclick="copyStrategyTransferJson()">Copy Strategy JSON</button>' +
+      '</div>';
+      allocatorHtml += '<div class="allocator-reasoning-title">// Allocation Reasoning</div><div class="allocator-reasoning">';
+      allocatorResult.reasoning.forEach(function(r) {
+        var color = colors[r.agent] || 'var(--accent2)';
+        allocatorHtml +=
+          '<div class="reasoning-row">' +
+            '<div class="reasoning-agent" style="color:' + color + '">' + r.agent.replace(' Agent', '') + '</div>' +
+            '<div class="reasoning-pct" style="color:' + color + '">' + r.percent + '</div>' +
+            '<div class="reasoning-text">' + r.reason + '</div>' +
+          '</div>';
+      });
+      allocatorHtml += '</div>';
+    }
+    allocatorHtml += '</div>';
+  }
+
+  // Scenario Agentパネル
+  var scenarioHtml = scenarios ? renderScenarioAgent(scenarios) : '';
+
+  document.getElementById('adcpProposals').innerHTML = cardsHtml + allocHtml + allocatorHtml + scenarioHtml;
+  document.getElementById('adcpAllocation').style.display = 'none';
+  document.getElementById('dlSimHtmlBtn').style.display = 'inline-block';
+  document.getElementById('dlSimPdfBtn').style.display = 'inline-block';
+
+  setTimeout(function() {
+    document.querySelectorAll('.adcp-alloc-bar, .scenario-mini-bar').forEach(function(bar) {
+      bar.style.width = bar.getAttribute('data-w') + '%';
+    });
+  }, 80);
+}
+
+
+// ===== EXPORT =====
+function buildExportHTML(bodyHTML, jsonText, title, ai, mode) {
+  return '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>' + title + '</title>' +
+    '<style>body{font-family:"Hiragino Kaku Gothic ProN",sans-serif;max-width:860px;margin:40px auto;padding:0 24px;color:#1a1a1a;line-height:1.8}' +
+    'h1{font-size:20px;border-bottom:2px solid #1a1a1a;padding-bottom:8px;margin-bottom:6px}.meta{font-size:11px;color:#888;margin-bottom:28px}' +
+    'h2{font-size:16px;margin:28px 0 10px;padding:7px 12px;background:#f4f4f4;border-left:4px solid #1a1a1a}h3{font-size:14px;color:#333;margin:16px 0 6px}' +
+    'table{width:100%;border-collapse:collapse;margin:14px 0;font-size:12px}th{background:#1a1a1a;color:#fff;padding:8px 11px;text-align:left}' +
+    'td{padding:8px 11px;border:1px solid #ddd}tr:nth-child(even) td{background:#fafafa}ul{padding-left:18px}li{margin-bottom:3px}' +
+    'strong{font-weight:700}em{color:#0055cc;font-style:normal}pre{background:#f8f8f8;border:1px solid #ddd;border-radius:6px;padding:14px;font-size:11px;overflow-x:auto}' +
+    '@media print{body{margin:0}}</style></head>' +
+    '<body><h1>' + title + '</h1><div class="meta">生成日：' + new Date().toLocaleDateString('ja-JP') + ' / AI：' + ai + ' / モード：' + mode + '</div>' +
+    bodyHTML + (jsonText && jsonText !== '（JSONの抽出に失敗しました）' ? '<h2>JSON Output</h2><pre>' + jsonText + '</pre>' : '') +
+    '</body></html>';
+}
+function downloadHTML() {
+  const html = buildExportHTML(document.getElementById('resBody').innerHTML, document.getElementById('jsonOut').textContent, 'メディアプランニング分析 - ' + (lastInput.industry||'プラン'), document.getElementById('aiBadge').textContent, document.getElementById('modeBadge').textContent);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' })); a.download = 'media-plan-' + Date.now() + '.html'; a.click();
+}
+function dlHistory(id) {
+  const e = JSON.parse(localStorage.getItem('mpv4_history') || '[]').find(function(x) { return x.id === id; });
+  if (!e) return;
+  const html = buildExportHTML(e.html, e.json||'', 'メディアプランニング分析 - ' + (e.industry||'プラン'), e.ai, e.mode||'');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' })); a.download = 'media-plan-' + e.id + '.html'; a.click();
+}
+function downloadPDF() {
+  const html = buildExportHTML(document.getElementById('resBody').innerHTML, document.getElementById('jsonOut').textContent, 'メディアプランニング分析 - ' + (lastInput.industry||'プラン'), document.getElementById('aiBadge').textContent, document.getElementById('modeBadge').textContent);
+  const w = window.open('', '_blank'); w.document.write(html); w.document.close(); w.onload = function() { w.focus(); w.print(); };
+}
+
+// ===== SECTION EDIT =====
+function toggleSecEdit(secId, btnEl) {
+  var panel = document.getElementById(secId);
+  if (!panel) return;
+  var isOn = panel.classList.contains('on');
+  if (isOn) {
+    panel.classList.remove('on');
+    return;
+  }
+  var h2 = btnEl.closest('h2');
+  var secTitle = h2 ? h2.textContent.replace('修正', '').trim() : '';
+  panel.innerHTML =
+    '<div style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--accent2);margin-bottom:8px;letter-spacing:0.08em">// ' + secTitle + ' を修正</div>' +
+    '<textarea id="sedit-input-'+secId+'" placeholder="修正の指示を入力してください。例：このセクションのGoogle広告の配分を35%に変更して"></textarea>' +
+    '<div class="sec-edit-actions">' +
+      '<button class="sec-edit-run" id="sedit-run-'+secId+'" onclick="runSecEdit(\''+secId+'\')">再生成 →</button>' +
+      '<button class="sec-edit-cancel" onclick="document.getElementById(\''+secId+'\').classList.remove(\'on\')">閉じる</button>' +
+      '<span class="sec-edit-status" id="sedit-st-'+secId+'"></span>' +
+    '</div>';
+  panel.classList.add('on');
+}
+
+async function runSecEdit(secId) {
+  var inputEl = document.getElementById('sedit-input-' + secId);
+  var runBtn = document.getElementById('sedit-run-' + secId);
+  var stEl = document.getElementById('sedit-st-' + secId);
+  if (!inputEl || !inputEl.value.trim()) { alert('修正内容を入力してください'); return; }
+
+  var key = localStorage.getItem('mpv4key_' + currentAI) || document.getElementById('apiKey-' + currentAI).value.trim();
+  if (!key) { alert(AI_LABELS[currentAI] + ' のAPIキーを入力・保存してください'); return; }
+
+  var h2 = document.querySelector('h2[data-sec-id="' + secId + '"]');
+  var secTitle = h2 ? h2.textContent.replace('修正', '').trim() : 'このセクション';
+
+  // セクションのコンテンツ（次のh2まで）を収集
+  var secContent = '';
+  var node = h2 ? h2.nextSibling : null;
+  while (node) {
+    if (node.tagName === 'H2') break;
+    if (node.tagName === 'DIV' && node.classList && node.classList.contains('sec-edit-panel')) { node = node.nextSibling; continue; }
+    secContent += (node.outerHTML || node.textContent || '');
+    node = node.nextSibling;
+  }
+
+  var editInstruction = inputEl.value.trim();
+  var fullResBody = document.getElementById('resBody').innerText || '';
+
+  var sys = (lastInput.outputMode === 'full') ? SYS_FULL : SYS_LIGHT;
+  var prompt = '以下はメディアプランニング分析レポートの全体概要です：\n\n' + fullResBody.slice(0, 2000) +
+    '\n\n---\n以下のセクション「' + secTitle + '」の内容だけを、次の指示に従って修正・再生成してください：\n\n【修正指示】\n' + editInstruction +
+    '\n\n【現在のセクション内容】\n' + secContent.replace(/<[^>]+>/g, '').slice(0, 1500) +
+    '\n\n【出力形式】\nセクション「' + secTitle + '」の内容のみをmarkdown形式で出力してください。見出し（##）は含めず、内容本文のみ出力してください。';
+
+  runBtn.disabled = true;
+  stEl.textContent = '再生成中...';
+  stEl.className = 'sec-edit-status running';
+
+  try {
+    var result = '';
+    if (currentAI === 'claude') result = await callGatewayAnthropic(key, sys, prompt, 'claude-sonnet-4-6');
+    else if (currentAI === 'haiku') result = await callGatewayAnthropic(key, sys, prompt, 'claude-haiku-4-5-20251001');
+    else if (currentAI === 'gemini') result = await callGatewayGemini(key, sys, prompt, 'gemini-3.1-flash-lite-preview');
+    else result = await callGatewayRakutenAI(key, sys, prompt, 'rakutenai-3.0');
+
+    // h2直後のパネル以外の兄弟ノードをmd2htmlの新しい内容で置き換える
+    var newHtml = md2html(result);
+    // 既存コンテンツノードを削除
+    var toRemove = [];
+    var sibling = h2 ? h2.nextSibling : null;
+    while (sibling) {
+      if (sibling.tagName === 'H2') break;
+      if (sibling.tagName === 'DIV' && sibling.classList && sibling.classList.contains('sec-edit-panel')) { sibling = sibling.nextSibling; continue; }
+      toRemove.push(sibling);
+      sibling = sibling.nextSibling;
+    }
+    var insertAnchor = document.getElementById(secId);
+    toRemove.forEach(function(n) { n.parentNode.removeChild(n); });
+    // 新コンテンツをパネルの後ろに挿入
+    var tempDiv = document.createElement('div');
+    tempDiv.innerHTML = newHtml;
+    var parent = insertAnchor.parentNode;
+    var ref = insertAnchor.nextSibling;
+    while (tempDiv.firstChild) {
+      parent.insertBefore(tempDiv.firstChild, ref);
+    }
+
+    // 修正後のresBody全体をスタックに積む
+    var activeEntry = _analysisStack[_activeStackIdx] || {};
+    var baseLabel = _stackLabel(activeEntry);
+    pushToStack({
+      id: Date.now(),
+      label: baseLabel + ' [修正]',
+      html: document.getElementById('resBody').innerHTML,
+      memo: activeEntry.memo || '',
+      ai: activeEntry.ai || document.getElementById('aiBadge').textContent,
+      mode: activeEntry.mode || document.getElementById('modeBadge').textContent,
+      rawJson: activeEntry.rawJson || '',
+      formData: activeEntry.formData || lastInput
+    });
+
+    stEl.textContent = '✓ 更新しました';
+    stEl.className = 'sec-edit-status done';
+    inputEl.value = '';
+  } catch(e) {
+    stEl.textContent = 'エラー: ' + (e.message || '').slice(0, 80);
+    stEl.className = 'sec-edit-status err';
+  }
+  runBtn.disabled = false;
+}
+
+function downloadAllocationCSV() {
+  var resBody = document.getElementById('resBody');
+  if (!resBody) return;
+  var tables = resBody.querySelectorAll('table');
+  var allocationTable = null;
+  tables.forEach(function(t) {
+    var ths = t.querySelectorAll('th');
+    for (var i = 0; i < ths.length; i++) {
+      if (/配分|月額|CV数/.test(ths[i].textContent)) { allocationTable = t; break; }
+    }
+  });
+  if (!allocationTable) { alert('予算配分案の表が見つかりません。フル分析モードで分析してから再度お試しください。'); return; }
+
+  var rows = [];
+  var headerRow = allocationTable.querySelectorAll('th');
+  if (headerRow.length) {
+    rows.push(Array.from(headerRow).map(function(th) { return '"' + th.textContent.trim().replace(/"/g, '""') + '"'; }).join(','));
+  }
+  allocationTable.querySelectorAll('tr').forEach(function(tr) {
+    var tds = tr.querySelectorAll('td');
+    if (!tds.length) return;
+    rows.push(Array.from(tds).map(function(td) { return '"' + td.textContent.trim().replace(/"/g, '""') + '"'; }).join(','));
+  });
+
+  var bom = '﻿';
+  var csv = bom + rows.join('\r\n');
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'media-plan-allocation-' + Date.now() + '.csv';
+  a.click();
+}
+</script>
+</body>
+</html>

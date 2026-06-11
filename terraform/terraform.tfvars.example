@@ -1,0 +1,7 @@
+project_id       = "sub-gcp-c-p-mkd-tech-sbx"
+region           = "asia-northeast1"
+service_name     = "media-planner-rakuten-gateway"
+allowed_domain   = "rakuten.com"
+allowed_users    = ["takemasa.yamada@rakuten.com"]
+container_image  = "asia-northeast1-docker.pkg.dev/sub-gcp-c-p-mkd-tech-sbx/media-planner-rakuten-gateway/media-planner-rakuten-gateway:latest"
+upstream_llm_url = ""

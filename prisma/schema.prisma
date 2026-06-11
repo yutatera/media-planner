@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UsageEventType {
+  PAGE_VIEW
+  LLM_REQUEST
+}
+
+model UsageEvent {
+  id           String         @id @default(cuid())
+  occurredAt   DateTime       @default(now()) @map("occurred_at")
+  userEmail    String?        @db.VarChar(255) @map("user_email")
+  pagePath     String         @db.VarChar(255) @map("page_path")
+  eventType    UsageEventType @map("event_type")
+  provider     String?        @db.VarChar(64)
+  model        String?        @db.VarChar(128)
+  success      Boolean?
+  statusCode   Int?           @map("status_code")
+  durationMs   Int?           @map("duration_ms")
+  requestBytes Int?           @map("request_bytes")
+  responseBytes Int?          @map("response_bytes")
+  systemLength Int?           @map("system_length")
+  userLength   Int?           @map("user_length")
+  errorMessage String?        @db.Text @map("error_message")
+  traceId      String?        @db.VarChar(128) @map("trace_id")
+  metadata     Json?
+
+  @@index([occurredAt], map: "idx_usage_events_occurred_at")
+  @@index([userEmail, occurredAt], map: "idx_usage_events_user_occurred_at")
+  @@index([eventType, occurredAt], map: "idx_usage_events_type_occurred_at")
+  @@index([provider, model, occurredAt], map: "idx_usage_events_model_occurred_at")
+  @@map("usage_events")
+}

@@ -49,6 +49,60 @@
 
 `proxy.rb` にあった provider 別の変換ロジックは `server.js` に統合済みです。通常運用では追加の upstream proxy は不要です。
 
+## Usage Tracking Design
+
+2026-06-11 時点で、Cloud SQL インスタンス `gmd-tech-shared` に専用データベース `media_planner_rakuten_gateway` を新規作成しました。
+
+この機能では、IAP が Cloud Run に渡す Google ユーザーヘッダーを使って利用状況を保存します。
+
+- 取得ヘッダー: `X-Goog-Authenticated-User-Email`
+- 保存先 DB: `gmd-tech:asia-northeast1:gmd-tech-shared` / `media_planner_rakuten_gateway`
+- 専用 DB ユーザー: `media_planner_gateway_user`
+- Secret Manager: `media-planner-rakuten-gateway-database-url`
+- スキーマ管理: [prisma/schema.prisma](/Users/takemasa.yamada/Documents/GitHub/media-planner/prisma/schema.prisma)
+- 一覧画面: `/usage`
+
+保存するイベント:
+
+- `PAGE_VIEW`: `/` と `/usage` の表示
+- `LLM_REQUEST`: `/api/llm` を経由したモデル呼び出し
+
+主な保存項目:
+
+- `userEmail`
+- `pagePath`
+- `eventType`
+- `provider`, `model`
+- `success`, `statusCode`, `durationMs`
+- `requestBytes`, `responseBytes`
+- `systemLength`, `userLength`
+- `traceId`
+
+`DATABASE_URL` が未設定の環境では、既存アプリはそのまま動作し、利用状況保存だけが無効になります。これによりローカル開発や段階導入でも既存フローを壊しません。
+
+## Usage Screen
+
+`/usage` は既存の [media-planner-rakuten-gateway.html](/Users/takemasa.yamada/Documents/GitHub/media-planner/media-planner-rakuten-gateway.html) と同じカラースキームを継承したダッシュボードです。
+
+画面構成:
+
+- Header: タイトル、期間切り替え、再読み込み、Planner 戻るリンク、現在ユーザー表示
+- Overview: 総イベント数、LLM 呼び出し数、成功率、アクティブユーザー数
+- Top Users: ユーザー別の総イベント数、LLM 呼び出し数、ページ閲覧数
+- Model Usage: provider / model ごとの利用回数と成功・失敗件数
+- Recent Events: 最新イベント一覧
+
+想定クエリ:
+
+- `GET /usage`
+- `GET /api/usage/summary?days=7`
+
+導入時にまだ必要なもの:
+
+- Terraform apply による Cloud Run への Secret 注入
+- `media_planner_gateway_user` への DB 権限付与
+- Prisma Client 生成とテーブル作成
+
 `UPSTREAM_LLM_URL` は必要な場合だけ使うオプションです。この環境変数を入れると、`/api/llm` のリクエストをその URL に丸ごと転送します。
 
 例:

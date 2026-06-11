@@ -1125,7 +1125,15 @@ async function callGateway(provider, key, sys, user, model) {
   const res = await fetch(API_PROXY_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ provider: provider, model: model, key: key, apiKey: key, system: sys, user: user })
+    body: JSON.stringify({
+      provider: provider,
+      model: model,
+      key: key,
+      apiKey: key,
+      system: sys,
+      user: user,
+      pagePath: window.location.pathname || '/'
+    })
   });
   const raw = await res.text();
   let data = null;

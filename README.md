@@ -6,10 +6,10 @@
 
 ## Architecture
 
-- App: [media-planner-rakuten-gateway.html](/Users/takemasa.yamada/Documents/GitHub/media-planner/media-planner-rakuten-gateway.html)
-- Runtime server: [server.js](/Users/takemasa.yamada/Documents/GitHub/media-planner/server.js)
-- Legacy proxy: [legacy/proxy.rb](/Users/takemasa.yamada/Documents/GitHub/media-planner/legacy/proxy.rb)
-- Infra as code: [`terraform/`](</Users/takemasa.yamada/Documents/GitHub/media-planner/terraform>)
+- App: [media-planner-rakuten-gateway.html](/Users/jhon.smith/Documents/GitHub/media-planner/media-planner-rakuten-gateway.html)
+- Runtime server: [server.js](/Users/jhon.smith/Documents/GitHub/media-planner/server.js)
+- Legacy proxy: [legacy/proxy.rb](/Users/jhon.smith/Documents/GitHub/media-planner/legacy/proxy.rb)
+- Infra as code: [`terraform/`](</Users/jhon.smith/Documents/GitHub/media-planner/terraform>)
 
 アプリ固有リソースは `media-planner-rakuten-gateway` 名で専用作成し、外向き固定 IP のためのネットワーク経路だけ `gmd-tech` の既存 staging 基盤を使います。
 
@@ -51,6 +51,8 @@
 
 `proxy.rb` にあった provider 別の変換ロジックは `server.js` に統合済みです。通常運用では追加の upstream proxy は不要です。
 
+`DATABASE_URL` が設定されている環境では、起動時に `prisma migrate deploy` を実行して `usage_events` テーブルを自動作成・更新します。
+
 ## Usage Tracking Design
 
 2026-06-11 時点で、Cloud SQL インスタンス `gmd-tech-shared` に専用データベース `media_planner_rakuten_gateway` を作成し、Cloud Run 起動時に Prisma migration を自動適用する構成にしています。
@@ -61,7 +63,7 @@
 - 保存先 DB: `gmd-tech:asia-northeast1:gmd-tech-shared` / `media_planner_rakuten_gateway`
 - 専用 DB ユーザー: `media_planner_gateway_user`
 - Secret Manager: `media-planner-rakuten-gateway-database-url`
-- スキーマ管理: [prisma/schema.prisma](/Users/takemasa.yamada/Documents/GitHub/media-planner/prisma/schema.prisma)
+- スキーマ管理: [prisma/schema.prisma](/Users/jhon.smith/Documents/GitHub/media-planner/prisma/schema.prisma)
 - 一覧画面: `/usage`
 
 保存するイベント:
@@ -88,7 +90,7 @@
 
 ## Usage Screen
 
-`/usage` は既存の [media-planner-rakuten-gateway.html](/Users/takemasa.yamada/Documents/GitHub/media-planner/media-planner-rakuten-gateway.html) と同じカラースキームを継承したダッシュボードです。
+`/usage` は既存の [media-planner-rakuten-gateway.html](/Users/jhon.smith/Documents/GitHub/media-planner/media-planner-rakuten-gateway.html) と同じカラースキームを継承したダッシュボードです。
 
 画面構成:
 
@@ -164,6 +166,8 @@ terraform -chdir=terraform apply
 
 インフラは Terraform、アプリイメージの作成は Cloud Build を使います。
 
+コンテナビルド時には `openssl` を追加し、`npm install` と `npx prisma generate` まで実行します。
+
 ```bash
 gcloud builds submit \
   --project gmd-tech \
@@ -173,13 +177,13 @@ gcloud builds submit \
   .
 ```
 
-`latest` を使い続けることもできますが、運用ではタグや digest を固定して `container_image` を更新する方が安全です。
+`latest` を使い続けることもできますが、運用ではタグや digest を固定して `container_image` を更新する方が安全です。直近の反映例では `20260611-usage2` を使っています。
 
 例:
 
 ```bash
 terraform -chdir=terraform apply \
-  -var='container_image=asia-northeast1-docker.pkg.dev/gmd-tech/media-planner-rakuten-gateway/media-planner-rakuten-gateway:20260611-1'
+  -var='container_image=asia-northeast1-docker.pkg.dev/gmd-tech/media-planner-rakuten-gateway/media-planner-rakuten-gateway:20260611-usage2'
 ```
 
 ## Deployment Notes For gmd-tech
@@ -201,8 +205,17 @@ terraform -chdir=terraform apply \
 社内CAが必要なため、`npm` や `prisma` 実行時は次の PEM を使う想定です。
 
 ```bash
-NODE_EXTRA_CA_CERTS=/Users/takemasa.yamada/certs/rakuten_CA_only.pem npm install
-NODE_EXTRA_CA_CERTS=/Users/takemasa.yamada/certs/rakuten_CA_only.pem npx prisma generate
+NODE_EXTRA_CA_CERTS=/Users/jhon.smith/certs/rakuten_CA_only.pem npm install
+NODE_EXTRA_CA_CERTS=/Users/jhon.smith/certs/rakuten_CA_only.pem npx prisma generate
+```
+
+利用状況保存まで含めてローカル確認する場合は、Cloud SQL Proxy か同等の接続経路を用意した上で `DATABASE_URL` を設定してください。`DATABASE_URL` を省略した場合でもアプリ自体は起動しますが、`/usage` の保存機能は無効になります。
+
+例:
+
+```bash
+export DATABASE_URL='mysql://media_planner_gateway_user:<PASSWORD>@localhost:3306/media_planner_rakuten_gateway?socket=%2Fcloudsql%2Fgmd-tech%3Aasia-northeast1%3Agmd-tech-shared&connection_limit=5'
+NODE_EXTRA_CA_CERTS=/Users/jhon.smith/certs/rakuten_CA_only.pem npm start
 ```
 
 ## Security Notes

@@ -22,6 +22,7 @@ const EGRESS_IP_CHECK_URL = process.env.EGRESS_IP_CHECK_URL || 'https://api.ipif
 const EGRESS_IP_CHECK_TIMEOUT_MS = Number(process.env.EGRESS_IP_CHECK_TIMEOUT_MS || 10000);
 const DEBUG_PROBE_TIMEOUT_MS = Number(process.env.DEBUG_PROBE_TIMEOUT_MS || 10000);
 const DATABASE_URL = process.env.DATABASE_URL || '';
+const USAGE_EXCLUDED_PAGE_PATHS = new Set(['/usage']);
 
 const HTML_BODY = fs.readFileSync(HTML_PATH);
 const USAGE_HTML_BODY = fs.readFileSync(USAGE_HTML_PATH);
@@ -520,6 +521,10 @@ async function recordUsageEvent(eventData) {
 }
 
 function recordPageView(req, pagePath) {
+  if (USAGE_EXCLUDED_PAGE_PATHS.has(pagePath)) {
+    return Promise.resolve();
+  }
+
   return recordUsageEvent({
     eventType: 'PAGE_VIEW',
     pagePath,
@@ -556,7 +561,13 @@ async function buildUsageSummary(days) {
 
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const baseWhere = {
-    occurredAt: { gte: since }
+    occurredAt: { gte: since },
+    NOT: {
+      eventType: 'PAGE_VIEW',
+      pagePath: {
+        in: Array.from(USAGE_EXCLUDED_PAGE_PATHS)
+      }
+    }
   };
 
   let totalEvents;
@@ -939,7 +950,6 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && url.pathname === '/usage') {
     sendHtml(res, 200, USAGE_HTML_BODY);
-    void recordPageView(req, '/usage');
     return;
   }
 
